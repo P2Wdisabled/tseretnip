@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tseretnip/src/core/config/app_config.dart';
+import 'package:tseretnip/pages/upload_photos_page.dart';
+import 'package:tseretnip/services/core/config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await AppConfig.load();
 
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
@@ -20,7 +23,8 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+      debugShowCheckedModeBanner: false,
+      home: UploadPhotosPage(),
     );
   }
 }
