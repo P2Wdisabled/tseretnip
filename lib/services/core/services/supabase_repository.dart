@@ -89,13 +89,11 @@ class SupabaseRepository {
   Future<List<Map<String, dynamic>>> getPhotos() async {
     return await _client
         .from('posts')
-        .select(
-          '*, profiles(username, avatar_url)',
-        ) // Join with profiles if needed
+        .select('*') // Join with profiles if needed
         .order('created_at', ascending: false);
   }
 
-  Future<void> deletePhoto(String postId) async {
+  Future<void> deletePhoto(int postId) async {
     await _client.from('posts').delete().eq('id', postId);
     // Note: To fully clean up, you should also delete the image from storage,
     // but that requires knowing the path or storing it in the DB.
@@ -117,14 +115,14 @@ class SupabaseRepository {
         .eq('user_id', user.id);
   }
 
-  Future<void> likePost(String postId) async {
+  Future<void> likePost(int postId) async {
     final user = currentUser;
-    if (user == null) throw Exception('User not logged in');
+    //if (user == null) throw Exception('User not logged in');
 
-    await _client.from('likes').insert({'user_id': user.id, 'post_id': postId});
+    await _client.from('likes').insert({'user_id': 1, 'post_id': postId});
   }
 
-  Future<void> unlikePost(String postId) async {
+  Future<void> unlikePost(int postId) async {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
