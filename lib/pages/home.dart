@@ -64,40 +64,6 @@ class _HomePageState extends State<HomePage> {
     return _likedPosts.any((element) => element['post_id'] == postId);
   }
 
-  int _getLikeCount(Map<String, dynamic> post) {
-    // Determine how Supabase returns the count.
-    // Usually with select('*, likes(count)') it returns "likes": [{"count": 5}]
-    try {
-      final likesData = post['likes'] as List<dynamic>?;
-      if (likesData != null && likesData.isNotEmpty) {
-        return likesData[0]['count'] as int;
-      }
-    } catch (e) {
-      print('Error parsing like count: $e');
-    }
-    return 0;
-  }
-
-  Future<void> _toggleLike(int postId) async {
-    // Check if user is authenticated (No longer needed strictly as we fake user 1, but good practice)
-    // if (_repository.currentUser == null) ... logic removed as we assume user 1 per instruction
-
-    try {
-      if (_isLiked(postId)) {
-        await _repository.unlikePost(postId);
-      } else {
-        await _repository.likePost(postId);
-      }
-      await _loadData();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Like failed: $e')));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,60 +87,152 @@ class _HomePageState extends State<HomePage> {
                 itemBuilder: (context, index) {
                   final post = _posts[index];
                   final postId = post['id'] as int;
-                  final base64Image = post['image'] as String?;
                   final isLiked = _isLiked(postId);
 
-                  return Card(
-                    margin: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Image - decode base64
-                        if (base64Image != null)
-                          Image.memory(
-                            base64Decode(
-                              base64Image.contains(',')
-                                  ? base64Image.split(',').last
-                                  : base64Image,
-                            ),
-                            height: 300,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox(
-                                  height: 300,
-                                  child: Center(child: Icon(Icons.error)),
-                                ),
-                          )
-                        else
-                          const SizedBox(
-                            height: 300,
-                            child: Center(child: Text('No image')),
-                          ),
-                        // Like button
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              const Spacer(),
-                              Text(_getLikeCount(post).toString()),
-                              IconButton(
-                                onPressed: () => _toggleLike(postId),
-                                icon: Icon(
-                                  isLiked
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: isLiked ? Colors.red : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  return PostCard(
+                    key: ValueKey(postId),
+                    post: post,
+                    initialIsLiked: isLiked,
+                    repository: _repository,
                   );
                 },
               ),
             ),
+    );
+  }
+}
+
+class PostCard extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final bool initialIsLiked;
+  final SupabaseRepository repository;
+
+  const PostCard({
+    super.key,
+    required this.post,
+    required this.initialIsLiked,
+    required this.repository,
+  });
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+  late bool _isLiked;
+  late int _likeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.initialIsLiked;
+    _likeCount = _getLikeCount(widget.post);
+  }
+
+  // Update state if widget configuration changes (e.g. parent refresh)
+  @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialIsLiked != oldWidget.initialIsLiked ||
+        widget.post != oldWidget.post) {
+      _isLiked = widget.initialIsLiked;
+      _likeCount = _getLikeCount(widget.post);
+    }
+  }
+
+  int _getLikeCount(Map<String, dynamic> post) {
+    try {
+      final likesData = post['likes'] as List<dynamic>?;
+      if (likesData != null && likesData.isNotEmpty) {
+        return likesData[0]['count'] as int;
+      }
+    } catch (e) {
+      print('Error parsing like count: $e');
+    }
+    return 0;
+  }
+
+  Future<void> _toggleLike() async {
+    final postId = widget.post['id'] as int;
+    final previousLikedState = _isLiked;
+    final previousCount = _likeCount;
+
+    setState(() {
+      if (_isLiked) {
+        _likeCount--;
+        _isLiked = false;
+      } else {
+        _likeCount++;
+        _isLiked = true;
+      }
+    });
+
+    try {
+      if (previousLikedState) {
+        await widget.repository.unlikePost(postId);
+      } else {
+        await widget.repository.likePost(postId);
+      }
+    } catch (e) {
+      print('❌ Like toggle failed: $e');
+      if (mounted) {
+        // Rollback
+        setState(() {
+          _isLiked = previousLikedState;
+          _likeCount = previousCount;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Action failed: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base64Image = widget.post['image'] as String?;
+
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Image - decode base64
+          if (base64Image != null)
+            Image.memory(
+              base64Decode(
+                base64Image.contains(',')
+                    ? base64Image.split(',').last
+                    : base64Image,
+              ),
+              height: 300,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const SizedBox(
+                height: 300,
+                child: Center(child: Icon(Icons.error)),
+              ),
+            )
+          else
+            const SizedBox(height: 300, child: Center(child: Text('No image'))),
+          // Like button
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                const Spacer(),
+                Text(_likeCount.toString()),
+                IconButton(
+                  onPressed: _toggleLike,
+                  icon: Icon(
+                    _isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: _isLiked ? Colors.red : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
