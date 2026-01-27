@@ -89,7 +89,7 @@ class SupabaseRepository {
   Future<List<Map<String, dynamic>>> getPhotos() async {
     return await _client
         .from('posts')
-        .select('*') // Join with profiles if needed
+        .select('*, likes(count)') // Join with profiles if needed
         .order('created_at', ascending: false);
   }
 
@@ -105,31 +105,31 @@ class SupabaseRepository {
 
   /// Returns all posts liked by the current user.
   Future<List<Map<String, dynamic>>> getLikedPosts() async {
-    final user = currentUser;
-    if (user == null) throw Exception('User not logged in');
+    // Hardcoded user for testing
+    const userId = 1;
 
     // Select likes and join with posts to get post details
     return await _client
         .from('likes')
         .select('post_id, posts(*)')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
   }
 
   Future<void> likePost(int postId) async {
-    final user = currentUser;
-    //if (user == null) throw Exception('User not logged in');
+    // Hardcoded user for testing
+    const userId = 1;
 
-    await _client.from('likes').insert({'user_id': 1, 'post_id': postId});
+    await _client.from('likes').insert({'user_id': userId, 'post_id': postId});
   }
 
   Future<void> unlikePost(int postId) async {
-    final user = currentUser;
-    if (user == null) throw Exception('User not logged in');
+    // Hardcoded user for testing
+    const userId = 1;
 
     await _client
         .from('likes')
         .delete()
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('post_id', postId);
   }
 }

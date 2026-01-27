@@ -37,9 +37,11 @@ class _HomePageState extends State<HomePage> {
       }
 
       if (mounted) {
+        final liked = await _repository.getLikedPosts();
+
         setState(() {
           _posts = posts;
-          _likedPosts = []; // Simplified - ignoring likes for now
+          _likedPosts = liked;
         });
         print('✨ UI updated with ${_posts.length} posts');
       }
@@ -62,14 +64,23 @@ class _HomePageState extends State<HomePage> {
     return _likedPosts.any((element) => element['post_id'] == postId);
   }
 
-  Future<void> _toggleLike(int postId) async {
-    // Check if user is authenticated
-    if (_repository.currentUser != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please login to like posts')),
-      );
-      return;
+  int _getLikeCount(Map<String, dynamic> post) {
+    // Determine how Supabase returns the count.
+    // Usually with select('*, likes(count)') it returns "likes": [{"count": 5}]
+    try {
+      final likesData = post['likes'] as List<dynamic>?;
+      if (likesData != null && likesData.isNotEmpty) {
+        return likesData[0]['count'] as int;
+      }
+    } catch (e) {
+      print('Error parsing like count: $e');
     }
+    return 0;
+  }
+
+  Future<void> _toggleLike(int postId) async {
+    // Check if user is authenticated (No longer needed strictly as we fake user 1, but good practice)
+    // if (_repository.currentUser == null) ... logic removed as we assume user 1 per instruction
 
     try {
       if (_isLiked(postId)) {
@@ -145,6 +156,7 @@ class _HomePageState extends State<HomePage> {
                           child: Row(
                             children: [
                               const Spacer(),
+                              Text(_getLikeCount(post).toString()),
                               IconButton(
                                 onPressed: () => _toggleLike(postId),
                                 icon: Icon(
