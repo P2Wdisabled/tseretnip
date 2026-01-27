@@ -65,6 +65,18 @@ class _HomePageState extends State<HomePage> {
     return _likedPosts.any((element) => element['post_id'] == postId);
   }
 
+  int _getLikeCount(Map<String, dynamic> post) {
+    try {
+      final likesData = post['likes'] as List<dynamic>?;
+      if (likesData != null && likesData.isNotEmpty) {
+        return likesData[0]['count'] as int;
+      }
+    } catch (e) {
+      print('Error parsing like count: $e');
+    }
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,10 +85,36 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.favorite),
-            onPressed: () {
-              Navigator.of(context).push(
+            onPressed: () async {
+              final unlikedIds = await Navigator.of(context).push<List<int>>(
                 MaterialPageRoute(builder: (context) => const LikesPage()),
               );
+
+              if (unlikedIds != null && unlikedIds.isNotEmpty) {
+                // Locally update state for better UX (Dynamic/Cached feel)
+                setState(() {
+                  // 1. Remove from _likedPosts
+                  _likedPosts.removeWhere(
+                    (element) => unlikedIds.contains(element['post_id']),
+                  );
+
+                  // 2. Update count in _posts
+                  for (var id in unlikedIds) {
+                    final index = _posts.indexWhere((p) => p['id'] == id);
+                    if (index != -1) {
+                      final currentCount = _getLikeCount(_posts[index]);
+                      if (currentCount > 0) {
+                        _posts[index]['likes'] = [
+                          {'count': currentCount - 1},
+                        ];
+                      }
+                    }
+                  }
+                });
+
+                // Optionally reload to be perfectly safe, but local update provides the dynamic feel
+                // _loadData();
+              }
             },
           ),
           IconButton(
@@ -115,12 +153,14 @@ class PostCard extends StatelessWidget {
   final Map<String, dynamic> post;
   final bool initialIsLiked;
   final SupabaseRepository repository;
+  final Function(bool isLiked)? onLikeChanged;
 
   const PostCard({
     super.key,
     required this.post,
     required this.initialIsLiked,
     required this.repository,
+    this.onLikeChanged,
   });
 
   @override
@@ -156,6 +196,7 @@ class PostCard extends StatelessWidget {
             initialCount: _getLikeCount(post),
             initialIsLiked: initialIsLiked,
             repository: repository,
+            onLikeChanged: onLikeChanged,
           ),
         ],
       ),
@@ -180,6 +221,7 @@ class PostActionsBar extends StatefulWidget {
   final int initialCount;
   final bool initialIsLiked;
   final SupabaseRepository repository;
+  final Function(bool isLiked)? onLikeChanged;
 
   const PostActionsBar({
     super.key,
@@ -187,6 +229,7 @@ class PostActionsBar extends StatefulWidget {
     required this.initialCount,
     required this.initialIsLiked,
     required this.repository,
+    this.onLikeChanged,
   });
 
   @override
@@ -228,6 +271,9 @@ class _PostActionsBarState extends State<PostActionsBar> {
       }
     });
 
+    // Notify parent about optimistic update
+    widget.onLikeChanged?.call(_isLiked);
+
     try {
       if (previousLikedState) {
         await widget.repository.unlikePost(widget.postId);
@@ -242,6 +288,9 @@ class _PostActionsBarState extends State<PostActionsBar> {
           _isLiked = previousLikedState;
           _likeCount = previousCount;
         });
+        // Notify rollback
+        widget.onLikeChanged?.call(_isLiked);
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Action failed: $e')));
