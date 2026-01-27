@@ -13,11 +13,26 @@ class SupabaseRepository {
     required String password,
     required String username,
   }) async {
-    return await _client.auth.signUp(
+    final response = await _client.auth.signUp(
       email: email,
       password: password,
       data: {'username': username},
     );
+
+    // Insérer dans la table accounts si l'utilisateur est créé
+    final String userId = response.user!.id;
+    if (response.user != null) {
+      print("coucou");
+      try { await _client.from('accounts').insert({
+        'id': userId,
+        'username': username,
+      });
+    } catch (e) {
+      print("Erreur lors de l'insertion dans accounts: $e");
+    }
+    }
+
+    return response;
   }
 
   Future<AuthResponse> signIn({
@@ -40,14 +55,77 @@ class SupabaseRepository {
     final user = currentUser;
     if (user == null) return null;
 
-    final response = await _client
-        .from('profiles')
-        .select()
-        .eq('id', user.id)
-        .single();
+    try {
+      final response = await _client
+          .from('accounts')
+          .select()
+          .eq('id', user.id)
+          .single();
 
-    return response;
+      return response;
+    } catch (e) {
+      print('Erreur getCurrentProfile: $e');
+      return null;
+    }
   }
+
+  Future<Map<String, dynamic>?> getProfileById(String userId) async {
+    try {
+      final response = await _client
+          .from('accounts')
+          .select()
+          .eq('id', userId)
+          .single();
+
+      return response;
+    } catch (e) {
+      print('Erreur getProfileById: $e');
+      return null;
+    }
+  }
+
+  Future<void> updateProfile({
+    String? username,
+    String? description,
+    String? avatarUrl,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    final Map<String, dynamic> updates = {};
+    if (username != null) updates['username'] = username;
+    if (description != null) updates['description'] = description;
+    if (avatarUrl != null) updates['avatar'] = avatarUrl;
+
+    if (updates.isNotEmpty) {
+      await _client
+          .from('accounts')
+          .update(updates)
+          .eq('id', user.id);
+    }
+  }
+
+  Future<String> uploadProfilePicture(File imageFile) async {
+    final user = currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    final String fileName = '${user.id}/avatar_${DateTime.now().toIso8601String()}.jpg';
+    
+    await _client.storage
+        .from('avatars')
+        .upload(
+          fileName,
+          imageFile,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+        );
+
+    final String imageUrl = _client.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+    return imageUrl;
+  }
+
 
   // -----------------------------------------------------------------------------
   // PHOTOS (POSTS)
