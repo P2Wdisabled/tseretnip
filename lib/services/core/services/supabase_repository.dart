@@ -88,6 +88,7 @@ class SupabaseRepository {
     String? username,
     String? description,
     String? avatarUrl,
+    String? bannerUrl,
   }) async {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
@@ -96,6 +97,7 @@ class SupabaseRepository {
     if (username != null) updates['username'] = username;
     if (description != null) updates['description'] = description;
     if (avatarUrl != null) updates['avatar'] = avatarUrl;
+    if (bannerUrl != null) updates['banner'] = bannerUrl;
 
     if (updates.isNotEmpty) {
       await _client
@@ -121,6 +123,27 @@ class SupabaseRepository {
 
     final String imageUrl = _client.storage
         .from('avatars')
+        .getPublicUrl(fileName);
+
+    return imageUrl;
+  }
+
+  Future<String> uploadBanner(File imageFile) async {
+    final user = currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    final String fileName = '${user.id}/banner_${DateTime.now().toIso8601String()}.jpg';
+    
+    await _client.storage
+        .from('banner')
+        .upload(
+          fileName,
+          imageFile,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+        );
+
+    final String imageUrl = _client.storage
+        .from('banner')
         .getPublicUrl(fileName);
 
     return imageUrl;

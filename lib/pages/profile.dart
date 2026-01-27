@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/core/services/supabase_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -81,6 +82,30 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickAndUploadBanner() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image == null) return;
+
+    try {
+      final File imageFile = File(image.path);
+      final String imageUrl = await _repository.uploadBanner(imageFile);
+      
+      await _repository.updateProfile(bannerUrl: imageUrl);
+      
+      await _loadProfile();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bannière mise à jour!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de l\'upload: $e')),
+      );
+    }
+  }
+
   Future<void> _saveProfile() async {
     try {
       await _repository.updateProfile(
@@ -104,120 +129,229 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Profil'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: _isOwnProfile
             ? [
                 if (_isEditing)
                   IconButton(
-                    icon: const Icon(Icons.save),
+                    icon: const Icon(Icons.check, color: Colors.white),
                     onPressed: _saveProfile,
                   )
                 else
                   IconButton(
-                    icon: const Icon(Icons.edit),
+                    icon: const Icon(Icons.edit, color: Colors.white),
                     onPressed: () => setState(() => _isEditing = true),
                   ),
               ]
             : null,
       ),
+      extendBodyBehindAppBar: true,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _profile == null
               ? const Center(child: Text('Profil introuvable'))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Avatar
+                      // Banner
                       GestureDetector(
-                        onTap: _isOwnProfile && _isEditing ? _pickAndUploadImage : null,
+                        onTap: _isOwnProfile && _isEditing ? _pickAndUploadBanner : null,
                         child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundImage: _profile!['avatar'] != null && _profile!['avatar'].toString().isNotEmpty
-                                  ? NetworkImage(_profile!['avatar'])
-                                  : const AssetImage('assets/images/default.png') as ImageProvider,
+                            Container(
+                              height: 280,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                image: DecorationImage(
+                                  image: _profile!['banner'] != null && _profile!['banner'].toString().isNotEmpty
+                                      ? NetworkImage(_profile!['banner'])
+                                      : const AssetImage('assets/images/default-banner.jpg') as ImageProvider,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                             ),
                             if (_isOwnProfile && _isEditing)
                               Positioned(
-                                bottom: 0,
-                                right: 0,
+                                top: 90,
+                                right: 16,
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).primaryColor,
+                                    color: Colors.black54,
                                     shape: BoxShape.circle,
                                   ),
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(12),
                                   child: const Icon(
                                     Icons.camera_alt,
                                     color: Colors.white,
-                                    size: 20,
+                                    size: 22,
                                   ),
                                 ),
                               ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
                       
-                      // Username
-                      if (_isEditing && _isOwnProfile)
-                        TextField(
-                          controller: _usernameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nom d\'utilisateur',
-                            border: OutlineInputBorder(),
-                          ),
-                        )
-                      else
-                        Text(
-                          _profile!['username'] ?? 'Utilisateur',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
+                      // Avatar (overlapping banner)
+                      Transform.translate(
+                        offset: const Offset(0, -60),
+                        child: Column(
+                          children: [
+                            GestureDetector(
+                              onTap: _isOwnProfile && _isEditing ? _pickAndUploadImage : null,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ],
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 70,
+                                      backgroundImage: _profile!['avatar'] != null && _profile!['avatar'].toString().isNotEmpty
+                                          ? NetworkImage(_profile!['avatar'])
+                                          : const AssetImage('assets/images/default.png') as ImageProvider,
+                                    ),
+                                  ),
+                                  if (_isOwnProfile && _isEditing)
+                                    Positioned(
+                                      bottom: 5,
+                                      right: 5,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black87,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        padding: const EdgeInsets.all(10),
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Username
+                            if (_isEditing && _isOwnProfile)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                                child: TextField(
+                                  controller: _usernameController,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.playfairDisplay(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    border: UnderlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                                  ),
+                                ),
+                              )
+                            else
+                              Text(
+                                _profile!['username'] ?? 'Utilisateur',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            const SizedBox(height: 12),
+                            
+                            // Description
+                            if (_isEditing && _isOwnProfile)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                child: TextField(
+                                  controller: _descriptionController,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 3,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                    height: 1.5,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Parlez-nous de vous...',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                                    ),
+                                    contentPadding: EdgeInsets.all(16),
+                                  ),
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                child: Text(
+                                  _profile!['description'] ?? 'Aucune description',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                    height: 1.6,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 24),
+                            
+                            // Cancel button when editing
+                            if (_isEditing && _isOwnProfile)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _isEditing = false;
+                                      _usernameController.text = _profile!['username'] ?? '';
+                                      _descriptionController.text = _profile!['description'] ?? '';
+                                    });
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(25),
+                                    ),
+                                    side: const BorderSide(color: Colors.black26),
+                                  ),
+                                  child: Text(
+                                    'Annuler',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.black54,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      const SizedBox(height: 16),
-                      
-                      // description
-                      if (_isEditing && _isOwnProfile)
-                        TextField(
-                          controller: _descriptionController,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'Description',
-                            border: OutlineInputBorder(),
-                            hintText: 'Parlez-nous de vous...',
-                          ),
-                        )
-                      else
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _profile!['description'] ?? 'Aucune description',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-                      
-                      // Cancel button when editing
-                      if (_isEditing && _isOwnProfile)
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _isEditing = false;
-                              _usernameController.text = _profile!['username'] ?? '';
-                              _descriptionController.text = _profile!['description'] ?? '';
-                            });
-                          },
-                          child: const Text('Annuler'),
-                        ),
+                      ),
                     ],
                   ),
                 ),
