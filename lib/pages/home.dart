@@ -102,7 +102,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class PostCard extends StatefulWidget {
+class PostCard extends StatelessWidget {
   final Map<String, dynamic> post;
   final bool initialIsLiked;
   final SupabaseRepository repository;
@@ -115,82 +115,9 @@ class PostCard extends StatefulWidget {
   });
 
   @override
-  State<PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<PostCard> {
-  late bool _isLiked;
-  late int _likeCount;
-
-  @override
-  void initState() {
-    super.initState();
-    _isLiked = widget.initialIsLiked;
-    _likeCount = _getLikeCount(widget.post);
-  }
-
-  // Update state if widget configuration changes (e.g. parent refresh)
-  @override
-  void didUpdateWidget(covariant PostCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialIsLiked != oldWidget.initialIsLiked ||
-        widget.post != oldWidget.post) {
-      _isLiked = widget.initialIsLiked;
-      _likeCount = _getLikeCount(widget.post);
-    }
-  }
-
-  int _getLikeCount(Map<String, dynamic> post) {
-    try {
-      final likesData = post['likes'] as List<dynamic>?;
-      if (likesData != null && likesData.isNotEmpty) {
-        return likesData[0]['count'] as int;
-      }
-    } catch (e) {
-      print('Error parsing like count: $e');
-    }
-    return 0;
-  }
-
-  Future<void> _toggleLike() async {
-    final postId = widget.post['id'] as int;
-    final previousLikedState = _isLiked;
-    final previousCount = _likeCount;
-
-    setState(() {
-      if (_isLiked) {
-        _likeCount--;
-        _isLiked = false;
-      } else {
-        _likeCount++;
-        _isLiked = true;
-      }
-    });
-
-    try {
-      if (previousLikedState) {
-        await widget.repository.unlikePost(postId);
-      } else {
-        await widget.repository.likePost(postId);
-      }
-    } catch (e) {
-      print('❌ Like toggle failed: $e');
-      if (mounted) {
-        // Rollback
-        setState(() {
-          _isLiked = previousLikedState;
-          _likeCount = previousCount;
-        });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Action failed: $e')));
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final base64Image = widget.post['image'] as String?;
+    final base64Image = post['image'] as String?;
+    final postId = post['id'] as int;
 
     return Card(
       margin: const EdgeInsets.all(8),
@@ -215,20 +142,117 @@ class _PostCardState extends State<PostCard> {
           else
             const SizedBox(height: 300, child: Center(child: Text('No image'))),
           // Like button
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                const Spacer(),
-                Text(_likeCount.toString()),
-                IconButton(
-                  onPressed: _toggleLike,
-                  icon: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : null,
-                  ),
-                ),
-              ],
+          PostActionsBar(
+            postId: postId,
+            initialCount: _getLikeCount(post),
+            initialIsLiked: initialIsLiked,
+            repository: repository,
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _getLikeCount(Map<String, dynamic> post) {
+    try {
+      final likesData = post['likes'] as List<dynamic>?;
+      if (likesData != null && likesData.isNotEmpty) {
+        return likesData[0]['count'] as int;
+      }
+    } catch (e) {
+      print('Error parsing like count: $e');
+    }
+    return 0;
+  }
+}
+
+class PostActionsBar extends StatefulWidget {
+  final int postId;
+  final int initialCount;
+  final bool initialIsLiked;
+  final SupabaseRepository repository;
+
+  const PostActionsBar({
+    super.key,
+    required this.postId,
+    required this.initialCount,
+    required this.initialIsLiked,
+    required this.repository,
+  });
+
+  @override
+  State<PostActionsBar> createState() => _PostActionsBarState();
+}
+
+class _PostActionsBarState extends State<PostActionsBar> {
+  late bool _isLiked;
+  late int _likeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.initialIsLiked;
+    _likeCount = widget.initialCount;
+  }
+
+  @override
+  void didUpdateWidget(covariant PostActionsBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialIsLiked != oldWidget.initialIsLiked ||
+        widget.initialCount != oldWidget.initialCount) {
+      _isLiked = widget.initialIsLiked;
+      _likeCount = widget.initialCount;
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final previousLikedState = _isLiked;
+    final previousCount = _likeCount;
+
+    setState(() {
+      if (_isLiked) {
+        _likeCount--;
+        _isLiked = false;
+      } else {
+        _likeCount++;
+        _isLiked = true;
+      }
+    });
+
+    try {
+      if (previousLikedState) {
+        await widget.repository.unlikePost(widget.postId);
+      } else {
+        await widget.repository.likePost(widget.postId);
+      }
+    } catch (e) {
+      print('❌ Like toggle failed: $e');
+      if (mounted) {
+        // Rollback
+        setState(() {
+          _isLiked = previousLikedState;
+          _likeCount = previousCount;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Action failed: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          const Spacer(),
+          Text(_likeCount.toString()),
+          IconButton(
+            onPressed: _toggleLike,
+            icon: Icon(
+              _isLiked ? Icons.favorite : Icons.favorite_border,
+              color: _isLiked ? Colors.red : null,
             ),
           ),
         ],

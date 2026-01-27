@@ -106,7 +106,7 @@ class SupabaseRepository {
   /// Returns all posts liked by the current user.
   Future<List<Map<String, dynamic>>> getLikedPosts() async {
     // Hardcoded user for testing
-    const userId = 1;
+    const userId = "ac111517-5221-48e2-8843-78ee8a3cc6a3";
 
     // Select likes and join with posts to get post details
     return await _client
@@ -117,14 +117,14 @@ class SupabaseRepository {
 
   Future<void> likePost(int postId) async {
     // Hardcoded user for testing
-    const userId = 1;
+    const userId = "ac111517-5221-48e2-8843-78ee8a3cc6a3";
 
     await _client.from('likes').insert({'user_id': userId, 'post_id': postId});
   }
 
   Future<void> unlikePost(int postId) async {
     // Hardcoded user for testing
-    const userId = 1;
+    const userId = "ac111517-5221-48e2-8843-78ee8a3cc6a3";
 
     await _client
         .from('likes')
