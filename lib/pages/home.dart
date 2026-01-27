@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:tseretnip/pages/likes_page.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class HomePage extends StatefulWidget {
@@ -70,6 +71,14 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Pinterest Clone'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.favorite),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const LikesPage()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadData,
