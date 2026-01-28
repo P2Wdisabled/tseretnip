@@ -63,11 +63,13 @@ class SupabaseRepository {
     print('getCurrentProfile: User email = ${user.email}');
 
     try {
-      final response = await _client
-          .from('accounts')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle() as Map<String, dynamic>?;
+      final response =
+          await _client
+                  .from('accounts')
+                  .select()
+                  .eq('id', user.id)
+                  .maybeSingle()
+              as Map<String, dynamic>?;
 
       if (response == null) {
         print('getCurrentProfile: Profil non trouvé, création...');
@@ -78,11 +80,9 @@ class SupabaseRepository {
         });
 
         // Récupérer le profil créé
-        final newProfile = await _client
-            .from('accounts')
-            .select()
-            .eq('id', user.id)
-            .single() as Map<String, dynamic>;
+        final newProfile =
+            await _client.from('accounts').select().eq('id', user.id).single()
+                as Map<String, dynamic>;
 
         print('getCurrentProfile: Profil créé avec succès');
         return Account.fromJson(newProfile);
@@ -98,11 +98,9 @@ class SupabaseRepository {
 
   Future<Account?> getProfileById(String userId) async {
     try {
-      final response = await _client
-          .from('accounts')
-          .select()
-          .eq('id', userId)
-          .single() as Map<String, dynamic>;
+      final response =
+          await _client.from('accounts').select().eq('id', userId).single()
+              as Map<String, dynamic>;
 
       return Account.fromJson(response);
     } catch (e) {
@@ -206,24 +204,30 @@ class SupabaseRepository {
       'image': imageUrl,
       if (caption != null) 'caption': caption,
     });
-  }  /// Returns all photos (posts), ordered by creation date descending.
+  }
+
+  /// Returns all photos (posts), ordered by creation date descending.
   Future<List<Post>> getPhotos() async {
-    final response = await _client
-        .from('posts')
-        .select('*, likes(count), accounts(id, username, avatar)')
-        .order('created_at', ascending: false) as List<Map<String, dynamic>>;
-    
+    final response =
+        await _client
+                .from('posts')
+                .select('*, likes(count), accounts(id, username, avatar)')
+                .order('created_at', ascending: false)
+            as List<Map<String, dynamic>>;
+
     return response.map((json) => Post.fromJson(json)).toList();
   }
 
   /// Returns all posts by a specific user.
   Future<List<Post>> getPostsByUserId(String userId) async {
-    final response = await _client
-        .from('posts')
-        .select('*, likes(count), accounts(id, username, avatar)')
-        .eq('user_id', userId)
-        .order('created_at', ascending: false) as List<Map<String, dynamic>>;
-    
+    final response =
+        await _client
+                .from('posts')
+                .select('*, likes(count), accounts(id, username, avatar)')
+                .eq('user_id', userId)
+                .order('created_at', ascending: false)
+            as List<Map<String, dynamic>>;
+
     return response.map((json) => Post.fromJson(json)).toList();
   }
 
@@ -263,9 +267,37 @@ class SupabaseRepository {
   }
 
   Future<void> deletePhoto(int postId) async {
-    await _client.from('posts').delete().eq('id', postId);
-    // Note: To fully clean up, you should also delete the image from storage,
-    // but that requires knowing the path or storing it in the DB.
+    try {
+      // 1. Fetch the post to get the image URL
+      final postResponse = await _client
+          .from('posts')
+          .select('image')
+          .eq('id', postId)
+          .single();
+
+      final imageUrl = postResponse['image'] as String?;
+
+      // 2. Delete from storage if image exists and is a Supabase URL
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        // Extract the path from the URL.
+        // URL format: .../storage/v1/object/public/posts/userId/filename.jpg
+        // We need: userId/filename.jpg
+        final uri = Uri.parse(imageUrl);
+        final pathSegments = uri.pathSegments;
+        final postsIndex = pathSegments.indexOf('posts');
+
+        if (postsIndex != -1 && postsIndex + 1 < pathSegments.length) {
+          final filePath = pathSegments.sublist(postsIndex + 1).join('/');
+          await _client.storage.from('posts').remove([filePath]);
+        }
+      }
+
+      // 3. Delete the record
+      await _client.from('posts').delete().eq('id', postId);
+    } catch (e) {
+      print('Error deleting photo: $e');
+      rethrow; // Re-throw to handle in UI
+    }
   }
 
   // -----------------------------------------------------------------------------
@@ -278,11 +310,15 @@ class SupabaseRepository {
     if (user == null) throw Exception('User not logged in');
 
     // Select likes and join with posts to get post details
-    final response = await _client
-        .from('likes')
-        .select('post_id, posts(*, likes(count), accounts(id, username, avatar))')
-        .eq('user_id', user.id) as List<Map<String, dynamic>>;
-    
+    final response =
+        await _client
+                .from('likes')
+                .select(
+                  'post_id, posts(*, likes(count), accounts(id, username, avatar))',
+                )
+                .eq('user_id', user.id)
+            as List<Map<String, dynamic>>;
+
     // Transform data: Supabase returns {post_id: ..., posts: {...}}
     final List<Post> posts = [];
     for (var item in response) {
