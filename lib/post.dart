@@ -21,9 +21,9 @@ class Post extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base64Image = post['image'] as String?;
+    final imageSource = post['image'] as String?;
     final postId = post['id'] as int;
-    
+
     // Author info from joined accounts table
     final author = post['accounts'] as Map<String, dynamic>?;
     final authorId = post['user_id'] as String?;
@@ -52,7 +52,7 @@ class Post extends StatelessWidget {
             authorName: authorName,
             authorAvatar: authorAvatar,
           ),
-          
+
           // Post image
           ClipRRect(
             borderRadius: const BorderRadius.only(
@@ -61,22 +61,35 @@ class Post extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                if (base64Image != null)
-                  Image.memory(
-                    base64Decode(
-                      base64Image.contains(',')
-                          ? base64Image.split(',').last
-                          : base64Image,
-                    ),
-                    width: double.infinity,
-                    height: 350,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                if (imageSource != null)
+                  if (imageSource.startsWith('http'))
+                    Image.network(
+                      imageSource,
+                      width: double.infinity,
                       height: 350,
-                      color: Colors.grey[200],
-                      child: const Center(child: Icon(Icons.error, size: 48)),
-                    ),
-                  )
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 350,
+                        color: Colors.grey[200],
+                        child: const Center(child: Icon(Icons.error, size: 48)),
+                      ),
+                    )
+                  else
+                    Image.memory(
+                      base64Decode(
+                        imageSource.contains(',')
+                            ? imageSource.split(',').last
+                            : imageSource,
+                      ),
+                      width: double.infinity,
+                      height: 350,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 350,
+                        color: Colors.grey[200],
+                        child: const Center(child: Icon(Icons.error, size: 48)),
+                      ),
+                    )
                 else
                   Container(
                     height: 350,
@@ -85,7 +98,7 @@ class Post extends StatelessWidget {
                       child: Icon(Icons.image_not_supported, size: 48),
                     ),
                   ),
-                
+
                 // Like button overlay at bottom
                 Positioned(
                   left: 16,
@@ -168,13 +181,15 @@ class _AuthorHeader extends StatelessWidget {
               child: CircleAvatar(
                 radius: 22,
                 backgroundColor: Colors.grey[300],
-                backgroundImage: authorAvatar != null && authorAvatar!.isNotEmpty
+                backgroundImage:
+                    authorAvatar != null && authorAvatar!.isNotEmpty
                     ? NetworkImage(authorAvatar!)
-                    : const AssetImage('assets/images/default.png') as ImageProvider,
+                    : const AssetImage('assets/images/default.png')
+                          as ImageProvider,
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // Author info
             Expanded(
               child: Column(
@@ -276,9 +291,9 @@ class _LikeBarState extends State<_LikeBar> {
         });
         widget.onLikeChanged?.call(_isLiked);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Action failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Action failed: $e')));
       }
     }
   }
