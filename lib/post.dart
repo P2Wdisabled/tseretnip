@@ -2,17 +2,18 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
-class Post extends StatelessWidget {
-  final Map<String, dynamic> post;
+class PostWidget extends StatelessWidget {
+  final Post post;
   final bool initialIsLiked;
   final SupabaseRepository repository;
   final Function(bool isLiked)? onLikeChanged;
   final VoidCallback? onDeleted;
 
-  const Post({
+  const PostWidget({
     super.key,
     required this.post,
     required this.initialIsLiked,
@@ -23,14 +24,14 @@ class Post extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base64Image = post['image'] as String?;
-    final postId = post['id'] as int;
+    
+    final base64Image = post.image;
+    final postId = post.id;
 
-    // Author info from joined accounts table
-    final author = post['accounts'] as Map<String, dynamic>?;
-    final authorId = post['user_id'] as String?;
-    final authorName = author?['username'] ?? 'Utilisateur';
-    final authorAvatar = author?['avatar'] as String?;
+    final author = post.author;
+    final authorId = post.userId;
+    final authorName = author?.username ?? 'Utilisateur';
+    final authorAvatar = author?.avatar;
     final canDelete = authorId != null && repository.currentUser?.id == authorId;
 
     Future<void> handleDelete() async {
@@ -135,7 +136,7 @@ class Post extends StatelessWidget {
                   bottom: 16,
                   child: _LikeBar(
                     postId: postId,
-                    initialCount: _getLikeCount(post),
+                    initialCount: post.likeCount,
                     initialIsLiked: initialIsLiked,
                     repository: repository,
                     onLikeChanged: onLikeChanged,
@@ -148,22 +149,10 @@ class Post extends StatelessWidget {
       ),
     );
   }
-
-  int _getLikeCount(Map<String, dynamic> post) {
-    try {
-      final likesData = post['likes'] as List<dynamic>?;
-      if (likesData != null && likesData.isNotEmpty) {
-        return likesData[0]['count'] as int;
-      }
-    } catch (e) {
-      print('Error parsing like count: $e');
-    }
-    return 0;
-  }
 }
 
 class _AuthorHeader extends StatelessWidget {
-  final String? authorId;
+  final String authorId;
   final String authorName;
   final String? authorAvatar;
   final bool showDelete;
@@ -181,14 +170,12 @@ class _AuthorHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        if (authorId != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfilePage(userId: authorId),
-            ),
-          );
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilePage(userId: authorId),
+          ),
+        );
       },
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(24),

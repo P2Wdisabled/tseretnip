@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
@@ -12,7 +13,7 @@ class LikesPage extends StatefulWidget {
 class _LikesPageState extends State<LikesPage> {
   final SupabaseRepository _repository = SupabaseRepository();
   bool _isLoading = false;
-  List<Map<String, dynamic>> _likedPosts = [];
+  List<Post> _likedPosts = [];
   final Set<int> _unlikedIds = {};
 
   @override
@@ -26,19 +27,9 @@ class _LikesPageState extends State<LikesPage> {
     try {
       final likedData = await _repository.getLikedPosts();
 
-      // Transform data: Supabase returns {post_id: ..., posts: {...}}
-      // We need to extract 'posts' and flatten it for PostCard
-      final List<Map<String, dynamic>> posts = [];
-      for (var item in likedData) {
-        if (item['posts'] != null) {
-          final post = item['posts'] as Map<String, dynamic>;
-          posts.add(post);
-        }
-      }
-
       if (mounted) {
         setState(() {
-          _likedPosts = posts;
+          _likedPosts = likedData;
         });
       }
     } catch (e) {
@@ -92,9 +83,9 @@ class _LikesPageState extends State<LikesPage> {
                 itemCount: _likedPosts.length,
                 itemBuilder: (context, index) {
                   final post = _likedPosts[index];
-                  final postId = post['id'] as int;
+                  final postId = post.id;
 
-                  return Post(
+                  return PostWidget(
                     key: ValueKey(postId),
                     post: post,
                     initialIsLiked: true,
