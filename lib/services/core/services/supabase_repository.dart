@@ -180,10 +180,7 @@ class SupabaseRepository {
   // -----------------------------------------------------------------------------
 
   /// Publishes a photo by uploading it to storage and creating a post record.
-  Future<void> publishPhoto({
-    required File imageFile,
-    required String caption,
-  }) async {
+  Future<void> publishPhoto({required File imageFile, String? caption}) async {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
@@ -206,8 +203,8 @@ class SupabaseRepository {
     // Insert post record
     await _client.from('posts').insert({
       'user_id': user.id,
-      'image_url': imageUrl,
-      'caption': caption,
+      'image': imageUrl,
+      if (caption != null) 'caption': caption,
     });
   }  /// Returns all photos (posts), ordered by creation date descending.
   Future<List<Post>> getPhotos() async {
