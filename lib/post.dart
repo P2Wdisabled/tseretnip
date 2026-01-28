@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PostWidget extends StatelessWidget {
   final Post post;
@@ -106,16 +107,15 @@ class PostWidget extends StatelessWidget {
               children: [
                 if (imageSource != null)
                   if (imageSource.startsWith('http'))
-                    Image.network(
-                      imageSource,
+                    CachedNetworkImage(
+                      imageUrl: imageSource,
+                      placeholder: (context, url) =>
+                          const CircularProgressIndicator(),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.error),
                       width: double.infinity,
                       height: 350,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 350,
-                        color: Colors.grey[200],
-                        child: const Center(child: Icon(Icons.error, size: 48)),
-                      ),
                     )
                   else
                     Image.memory(
