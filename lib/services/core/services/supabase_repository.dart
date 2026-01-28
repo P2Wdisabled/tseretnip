@@ -76,14 +76,14 @@ class SupabaseRepository {
           'id': user.id,
           'username': user.email?.split('@')[0] ?? 'user',
         });
-        
+
         // Récupérer le profil créé
         final newProfile = await _client
             .from('accounts')
             .select()
             .eq('id', user.id)
             .single();
-        
+
         print('getCurrentProfile: Profil créé avec succès');
         return newProfile;
       }
@@ -211,14 +211,6 @@ class SupabaseRepository {
     });
   }
 
-  /// Returns all photos (posts), ordered by creation date descending.
-  Future<List<Map<String, dynamic>>> getPhotos() async {
-    return await _client
-        .from('posts')
-        .select('*, likes(count), accounts(id, username, avatar)')
-        .order('created_at', ascending: false);
-  }
-
   /// Returns all posts by a specific user.
   Future<List<Map<String, dynamic>>> getPostsByUserId(String userId) async {
     return await _client
@@ -226,6 +218,41 @@ class SupabaseRepository {
         .select('*, likes(count), accounts(id, username, avatar)')
         .eq('user_id', userId)
         .order('created_at', ascending: false);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRecentPosts() async {
+    // English comment: Fetch the 3 absolute most recent posts
+    final response = await _client
+        .from('posts')
+        .select('*, likes(count)')
+        .order('created_at', ascending: false)
+        .limit(3);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRankedPosts({
+    int offset = 0,
+    int limit = 10,
+  }) async {
+    try {
+      final List<dynamic> response = await _client.rpc(
+        'get_ranked_posts',
+        params: {'page_offset': offset, 'page_size': limit},
+      );
+
+      // Transformation pour que le format match avec votre fonction _getLikeCount
+      return response.map((post) {
+        return {
+          ...post as Map<String, dynamic>,
+          'likes': [
+            {'count': post['like_count']},
+          ],
+        };
+      }).toList();
+    } catch (e) {
+      print('Error RPC: $e');
+      return [];
+    }
   }
 
   Future<void> deletePhoto(int postId) async {
@@ -247,7 +274,9 @@ class SupabaseRepository {
     // Select likes and join with posts to get post details
     return await _client
         .from('likes')
-        .select('post_id, posts(*, likes(count), accounts(id, username, avatar))')
+        .select(
+          'post_id, posts(*, likes(count), accounts(id, username, avatar))',
+        )
         .eq('user_id', user.id);
   }
 
