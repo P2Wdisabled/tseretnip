@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tseretnip/services/core/config/app_config.dart';
 import 'package:tseretnip/pages/auth.dart';

@@ -22,7 +22,6 @@ class SupabaseRepository {
     // Insérer dans la table accounts si l'utilisateur est créé
     final String userId = response.user!.id;
     if (response.user != null) {
-      print("coucou");
       try {
         await _client.from('accounts').insert({
           'id': userId,
