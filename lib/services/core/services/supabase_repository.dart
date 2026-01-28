@@ -23,13 +23,14 @@ class SupabaseRepository {
     final String userId = response.user!.id;
     if (response.user != null) {
       print("coucou");
-      try { await _client.from('accounts').insert({
-        'id': userId,
-        'username': username,
-      });
-    } catch (e) {
-      print("Erreur lors de l'insertion dans accounts: $e");
-    }
+      try {
+        await _client.from('accounts').insert({
+          'id': userId,
+          'username': username,
+        });
+      } catch (e) {
+        print("Erreur lors de l'insertion dans accounts: $e");
+      }
     }
 
     return response;
@@ -100,10 +101,7 @@ class SupabaseRepository {
     if (bannerUrl != null) updates['banner'] = bannerUrl;
 
     if (updates.isNotEmpty) {
-      await _client
-          .from('accounts')
-          .update(updates)
-          .eq('id', user.id);
+      await _client.from('accounts').update(updates).eq('id', user.id);
     }
   }
 
@@ -111,8 +109,9 @@ class SupabaseRepository {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
-    final String fileName = '${user.id}/avatar_${DateTime.now().toIso8601String()}.jpg';
-    
+    final String fileName =
+        '${user.id}/avatar_${DateTime.now().toIso8601String()}.jpg';
+
     await _client.storage
         .from('avatars')
         .upload(
@@ -132,8 +131,9 @@ class SupabaseRepository {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
-    final String fileName = '${user.id}/banner_${DateTime.now().toIso8601String()}.jpg';
-    
+    final String fileName =
+        '${user.id}/banner_${DateTime.now().toIso8601String()}.jpg';
+
     await _client.storage
         .from('banner')
         .upload(
@@ -148,7 +148,6 @@ class SupabaseRepository {
 
     return imageUrl;
   }
-
 
   // -----------------------------------------------------------------------------
   // PHOTOS (POSTS)
@@ -190,13 +189,11 @@ class SupabaseRepository {
   Future<List<Map<String, dynamic>>> getPhotos() async {
     return await _client
         .from('posts')
-        .select(
-          '*, profiles(username, avatar_url)',
-        ) // Join with profiles if needed
+        .select('*, likes(count)') // Join with profiles if needed
         .order('created_at', ascending: false);
   }
 
-  Future<void> deletePhoto(String postId) async {
+  Future<void> deletePhoto(int postId) async {
     await _client.from('posts').delete().eq('id', postId);
     // Note: To fully clean up, you should also delete the image from storage,
     // but that requires knowing the path or storing it in the DB.
@@ -208,24 +205,27 @@ class SupabaseRepository {
 
   /// Returns all posts liked by the current user.
   Future<List<Map<String, dynamic>>> getLikedPosts() async {
+    // Hardcoded user for testing
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
     // Select likes and join with posts to get post details
     return await _client
         .from('likes')
-        .select('post_id, posts(*)')
+        .select('post_id, posts(*, likes(count))')
         .eq('user_id', user.id);
   }
 
-  Future<void> likePost(String postId) async {
+  Future<void> likePost(int postId) async {
+    // Hardcoded user for testing
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
     await _client.from('likes').insert({'user_id': user.id, 'post_id': postId});
   }
 
-  Future<void> unlikePost(String postId) async {
+  Future<void> unlikePost(int postId) async {
+    // Hardcoded user for testing
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
