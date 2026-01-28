@@ -1,21 +1,22 @@
 # Tseretnip - AI Copilot Instructions
 
 ## Project Overview
-Tseretnip is a Flutter-based social media app for sharing photos with like functionality, built with Supabase as the backend (auth, database, storage).
+Tseretnip is a Flutter-based social media app for sharing photos with like functionality, built with Supabase as the backend (auth, database, storage) and adaptive theming support.
 
 ## Architecture
 
 ### Core Structure
 - **Single Repository Pattern**: All backend interactions go through `SupabaseRepository` (`lib/services/core/services/supabase_repository.dart`)
-- **Pages**: Stateful widgets in `lib/pages/` for UI (auth, home, profile, likes_page)
-- **No Models Layer**: Data flows as `Map<String, dynamic>` directly from Supabase
+- **Pages**: Stateful widgets in `lib/pages/` for UI (auth, home, profile, likes_page, upload_photos_page)
+- **Models Layer**: Proper model classes in `lib/models/` with `fromJson`/`toJson` serialization (Post, Account, Like)
 - **Auth-First Navigation**: `AuthGate` in `main.dart` streams auth state to route users to `AuthPage` or `HomePage`
+- **Adaptive Theming**: Uses `adaptive_theme` package for system/light/dark theme switching
 
 ### Data Flow Pattern
 1. Pages call `SupabaseRepository` methods
 2. Repository methods use `Supabase.instance.client` singleton
-3. Data returns as `List<Map<String, dynamic>>` or `Map<String, dynamic>`
-4. Pages parse data inline (e.g., `post['likes'][0]['count']`)
+3. Data returns as typed model objects (e.g., `List<Post>`, `Account`)
+4. Models handle Supabase JSON parsing with specialized logic (like count aggregation)
 
 ## Critical Configuration
 
@@ -27,8 +28,12 @@ Uses `dart-define-from-file` for Supabase credentials:
 flutter run --dart-define-from-file=config.json
 
 # Setup (first time):
-cp config.template.json config.json
-# Then fill in SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_DB_PASSWORD
+# Create config.json with:
+# {
+#   "SUPABASE_URL": "your_supabase_url",
+#   "SUPABASE_ANON_KEY": "your_anon_key", 
+#   "SUPABASE_DB_PASSWORD": "your_db_password"
+# }
 ```
 
 Config is loaded via `String.fromEnvironment()` in `lib/services/core/config/app_config.dart`. **Never hardcode credentials**.
@@ -114,6 +119,7 @@ Navigator.push(context, MaterialPageRoute(
 - **Config**: [lib/services/core/config/app_config.dart](lib/services/core/config/app_config.dart) - Environment variable access
 - **Primary UI**: [lib/pages/home.dart](lib/pages/home.dart) - Post feed with likes
 - **User Management**: [lib/pages/auth.dart](lib/pages/auth.dart), [lib/pages/profile.dart](lib/pages/profile.dart)
+- **Photo Upload**: [lib/pages/upload_photos_page.dart](lib/pages/upload_photos_page.dart) - Multi-image upload functionality
 
 ## Testing & Debugging
 
@@ -138,16 +144,22 @@ Code uses emoji-prefixed prints for tracking:
 
 ## Project-Specific Quirks
 
-1. **No models directory**: Despite empty `lib/models/`, data is untyped Maps
+1. **Typed Models**: Despite having `lib/models/` directory with proper model classes, some legacy patterns exist
 2. **Base64 image storage**: Posts store images as base64, not using `image_url` from storage
 3. **Manual profile sync**: `accounts` table isn't auto-synced via Supabase triggers; done in app code
-4. **Like count aggregation**: Uses Supabase's `select('*, likes(count)')` syntax, parsed as `post['likes'][0]['count']`
+4. **Like count aggregation**: Uses Supabase's `select('*, likes(count)')` syntax, parsed in `Post.fromJson()` model
 5. **Image picker pattern**: Uses `image_picker` package, converts `XFile` to `File` before upload
 
 ## Dependencies
 
 Main packages (from [pubspec.yaml](pubspec.yaml)):
 - `supabase_flutter: ^2.0.0` - Backend SDK
+- `image_picker: ^1.1.2` - Photo selection
+- `google_fonts: ^6.1.0` - Typography
+- `adaptive_theme: ^3.0.0` - System/light/dark theme switching
+- `flutter_lints: ^6.0.0` - Linting (dev)
+
+No state management libraries (Provider, Riverpod, Bloc) used.
 - `image_picker: ^1.0.7` - Photo selection
 - `google_fonts: ^6.1.0` - Typography
 - `flutter_lints: ^6.0.0` - Linting (dev)

@@ -236,13 +236,6 @@ class _AuthorHeader extends StatelessWidget {
                       color: Colors.black87,
                     ),
                   ),
-                  Text(
-                    '@${authorName.toLowerCase().replaceAll(' ', '')}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: Colors.black45,
-                    ),
-                  ),
                 ],
               ),
             ),

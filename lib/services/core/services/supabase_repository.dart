@@ -231,7 +231,7 @@ class SupabaseRepository {
     // English comment: Fetch the 3 absolute most recent posts
     final response = await _client
         .from('posts')
-        .select('*, likes(count)')
+        .select('*, likes(count), accounts(id, username, avatar)')
         .order('created_at', ascending: false)
         .limit(3);
     return List<Map<String, dynamic>>.from(response);
@@ -247,15 +247,29 @@ class SupabaseRepository {
         params: {'page_offset': offset, 'page_size': limit},
       );
 
-      // Transformation pour que le format match avec votre fonction _getLikeCount
-      return response.map((post) {
-        return {
-          ...post as Map<String, dynamic>,
-          'likes': [
-            {'count': post['like_count']},
-          ],
-        };
-      }).toList();
+      // Si on n'a pas de posts, retourner une liste vide
+      if (response.isEmpty) return [];
+
+      // Récupérer les IDs des posts pour faire une requête complète avec les données d'auteur
+      final postIds = response.map((post) => post['id']).toList();
+      
+      // Faire une requête pour récupérer les posts complets avec les données d'auteur
+      final completePostsResponse = await _client
+          .from('posts')
+          .select('*, likes(count), accounts(id, username, avatar)')
+          .inFilter('id', postIds) as List<Map<String, dynamic>>;
+
+      // Maintenir l'ordre du RPC en triant selon l'ordre original
+      final orderedPosts = <Map<String, dynamic>>[];
+      for (final rpcPost in response) {
+        final completePost = completePostsResponse.firstWhere(
+          (p) => p['id'] == rpcPost['id'],
+          orElse: () => rpcPost as Map<String, dynamic>,
+        );
+        orderedPosts.add(completePost);
+      }
+
+      return orderedPosts;
     } catch (e) {
       print('Error RPC: $e');
       return [];
