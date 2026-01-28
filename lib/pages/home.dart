@@ -50,67 +50,53 @@ class _HomePageState extends State<HomePage> {
     if (_isLoading) return;
     if (loadMore && !_hasMore) return;
 
-    print(
-      '🔄 Starting to load posts... Refresh: $refresh, LoadMore: $loadMore',
-    );
     setState(() => _isLoading = true);
 
-    if (refresh) {
-      _currentPage = 0;
-      _hasMore = true;
-    }
-
     try {
-      final offset = _currentPage * _pageSize;
-      print(
-        '📡 Fetching posts from Supabase (Limit: $_pageSize, Offset: $offset)...',
-      );
+      List<Map<String, dynamic>> newPosts = [];
 
-      final posts = await _repository.getPhotos(
-        limit: _pageSize,
-        offset: offset,
-      );
-      print('✅ Received ${posts.length} posts');
-
-      if (posts.length < _pageSize) {
-        _hasMore = false;
+      if (refresh) {
+        _currentPage = 0;
+        _hasMore = true;
+        // 1. On récupère d'abord les 3 plus récents
+        newPosts = await _repository.fetchRecentPosts();
       }
 
-      // Print first post for debugging
-      if (posts.isNotEmpty) {
-        print('📸 First post: ${posts[0].keys}');
-        print('📸 Has image: ${posts[0].containsKey('image')}');
+      // 2. On récupère la page actuelle basée sur le ratio
+      final offset = _currentPage * _pageSize;
+      final rankedPosts = await _repository.fetchRankedPosts(
+        offset: offset,
+        limit: _pageSize,
+      );
+
+      // Filtrer pour éviter les doublons si un post récent est aussi bien classé par ratio
+      final existingIds = newPosts.map((p) => p['id']).toSet();
+      final filteredRanked = rankedPosts.where(
+        (p) => !existingIds.contains(p['id']),
+      );
+
+      newPosts.addAll(filteredRanked);
+
+      if (rankedPosts.length < _pageSize) {
+        _hasMore = false;
       }
 
       if (mounted) {
         final liked = await _repository.getLikedPosts();
-
         setState(() {
           if (refresh) {
-            _posts = posts;
+            _posts = newPosts;
           } else {
-            _posts.addAll(posts);
+            _posts.addAll(rankedPosts); // En loadMore, on ajoute tout
           }
-          _likedPosts =
-              liked; // Optimally we should maybe merge or just fetch likes for new posts but for now get all is fine
-          if (posts.isNotEmpty) {
-            _currentPage++;
-          }
+          _likedPosts = liked;
+          _currentPage++;
         });
-        print('✨ UI updated with total ${_posts.length} posts');
       }
-    } catch (e, stackTrace) {
-      print('❌ Error loading posts: $e');
-      print('Stack trace: $stackTrace');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading posts: $e')));
-      }
+    } catch (e) {
+      print('❌ Error: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

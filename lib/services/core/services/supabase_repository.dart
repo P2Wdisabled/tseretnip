@@ -185,16 +185,39 @@ class SupabaseRepository {
     });
   }
 
-  /// Returns photos (posts), ordered by creation date descending.
-  Future<List<Map<String, dynamic>>> getPhotos({
-    int limit = 10,
-    int offset = 0,
-  }) async {
-    return await _client
+  Future<List<Map<String, dynamic>>> fetchRecentPosts() async {
+    // English comment: Fetch the 3 absolute most recent posts
+    final response = await _client
         .from('posts')
         .select('*, likes(count)')
         .order('created_at', ascending: false)
-        .range(offset, offset + limit - 1);
+        .limit(3);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRankedPosts({
+    int offset = 0,
+    int limit = 10,
+  }) async {
+    try {
+      final List<dynamic> response = await _client.rpc(
+        'get_ranked_posts',
+        params: {'page_offset': offset, 'page_size': limit},
+      );
+
+      // Transformation pour que le format match avec votre fonction _getLikeCount
+      return response.map((post) {
+        return {
+          ...post as Map<String, dynamic>,
+          'likes': [
+            {'count': post['like_count']},
+          ],
+        };
+      }).toList();
+    } catch (e) {
+      print('Error RPC: $e');
+      return [];
+    }
   }
 
   Future<void> deletePhoto(int postId) async {
