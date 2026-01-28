@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tseretnip/pages/upload_photos_page.dart';
 import 'package:tseretnip/services/core/config/app_config.dart';
 import 'package:tseretnip/pages/auth.dart';
 import 'package:tseretnip/pages/home.dart' as home_page;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await AppConfig.load();
 
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
