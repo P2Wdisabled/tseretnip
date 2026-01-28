@@ -1,9 +1,8 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:tseretnip/services/core/services/supabase_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UploadPhotosPage extends StatefulWidget {
   const UploadPhotosPage({super.key});
@@ -38,6 +37,24 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
     });
   }
 
+  Future<void> _takePhoto() async {
+    final image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (image == null) {
+      return;
+    }
+    setState(() {
+      _selected
+        ..clear()
+        ..add(image);
+    });
+  }
+
   void _clearSelection() {
     setState(() {
       _selected.clear();
@@ -55,8 +72,9 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
     });
 
     try {
-      final repository = SupabaseRepository();
-      if (repository.currentUser == null) {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
         _showSnackBar('You must be signed in to upload.');
         return;
       }
@@ -65,9 +83,31 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
 
       for (var i = 0; i < _selected.length; i++) {
         final xFile = _selected[i];
-        final file = File(xFile.path);
+        final bytes = await xFile.readAsBytes();
+        final safeName = xFile.name.isNotEmpty
+            ? xFile.name.replaceAll(' ', '_')
+            : 'photo.jpg';
+        final fileName =
+            '$userId/${DateTime.now().toIso8601String()}_$safeName';
 
-        await repository.publishPhoto(imageFile: file);
+        await client.storage.from('posts').uploadBinary(
+          fileName,
+          bytes,
+          fileOptions: FileOptions(
+            cacheControl: '3600',
+            upsert: false,
+            contentType: xFile.mimeType ?? 'image/jpeg',
+          ),
+        );
+
+        final imageUrl = client.storage.from('posts').getPublicUrl(fileName);
+
+        await client.from('posts').insert({
+          'user_id': userId,
+          'image': imageUrl,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
         successCount++;
       }
 
@@ -119,6 +159,11 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
                     onPressed: _uploading ? null : _pickImages,
                     icon: const Icon(Icons.photo_library_outlined),
                     label: const Text('Select photos'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _uploading ? null : _takePhoto,
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Take photo'),
                   ),
                   OutlinedButton.icon(
                     onPressed: _uploading ? null : _clearSelection,
