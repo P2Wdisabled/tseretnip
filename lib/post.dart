@@ -24,15 +24,15 @@ class PostWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
-    final base64Image = post.image;
+    final imageSource = post.image;
     final postId = post.id;
 
     final author = post.author;
     final authorId = post.userId;
     final authorName = author?.username ?? 'Utilisateur';
     final authorAvatar = author?.avatar;
-    final canDelete = authorId != null && repository.currentUser?.id == authorId;
+    final canDelete =
+        authorId != null && repository.currentUser?.id == authorId;
 
     Future<void> handleDelete() async {
       final confirmed = await showDialog<bool>(
@@ -60,14 +60,14 @@ class PostWidget extends StatelessWidget {
       try {
         await repository.deletePhoto(postId);
         onDeleted?.call();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Post deleted')));
       } catch (e) {
         print('❌ Error deleting post: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting post: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting post: $e')));
       }
     }
 
