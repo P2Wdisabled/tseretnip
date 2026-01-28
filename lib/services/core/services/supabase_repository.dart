@@ -76,14 +76,14 @@ class SupabaseRepository {
           'id': user.id,
           'username': user.email?.split('@')[0] ?? 'user',
         });
-        
+
         // Récupérer le profil créé
         final newProfile = await _client
             .from('accounts')
             .select()
             .eq('id', user.id)
             .single();
-        
+
         print('getCurrentProfile: Profil créé avec succès');
         return newProfile;
       }
@@ -211,6 +211,15 @@ class SupabaseRepository {
     });
   }
 
+  /// Returns all posts by a specific user.
+  Future<List<Map<String, dynamic>>> getPostsByUserId(String userId) async {
+    return await _client
+        .from('posts')
+        .select('*, likes(count), accounts(id, username, avatar)')
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+  }
+
   Future<List<Map<String, dynamic>>> fetchRecentPosts() async {
     // English comment: Fetch the 3 absolute most recent posts
     final response = await _client
@@ -265,7 +274,9 @@ class SupabaseRepository {
     // Select likes and join with posts to get post details
     return await _client
         .from('likes')
-        .select('post_id, posts(*, likes(count), accounts(id, username, avatar))')
+        .select(
+          'post_id, posts(*, likes(count), accounts(id, username, avatar))',
+        )
         .eq('user_id', user.id);
   }
 
