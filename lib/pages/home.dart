@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/pages/likes_page.dart';
@@ -14,8 +15,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final SupabaseRepository _repository = SupabaseRepository();
   bool _isLoading = false;
-  List<Map<String, dynamic>> _posts = [];
-  List<Map<String, dynamic>> _likedPosts = [];
+  List<Post> _posts = [];
+  List<Post> _likedPosts = [];
 
   @override
   void initState() {
@@ -30,12 +31,6 @@ class _HomePageState extends State<HomePage> {
       print('📡 Fetching posts from Supabase...');
       final posts = await _repository.getPhotos();
       print('✅ Received ${posts.length} posts');
-
-      // Print first post for debugging
-      if (posts.isNotEmpty) {
-        print('📸 First post: ${posts[0].keys}');
-        print('📸 Has image: ${posts[0].containsKey('image')}');
-      }
 
       if (mounted) {
         final liked = await _repository.getLikedPosts();
@@ -62,19 +57,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool _isLiked(int postId) {
-    return _likedPosts.any((element) => element['post_id'] == postId);
-  }
-
-  int _getLikeCount(Map<String, dynamic> post) {
-    try {
-      final likesData = post['likes'] as List<dynamic>?;
-      if (likesData != null && likesData.isNotEmpty) {
-        return likesData[0]['count'] as int;
-      }
-    } catch (e) {
-      print('Error parsing like count: $e');
-    }
-    return 0;
+    return _likedPosts.any((post) => post.id == postId);
   }
 
   @override
@@ -112,17 +95,17 @@ class _HomePageState extends State<HomePage> {
               if (unlikedIds != null && unlikedIds.isNotEmpty) {
                 setState(() {
                   _likedPosts.removeWhere(
-                    (element) => unlikedIds.contains(element['post_id']),
+                    (post) => unlikedIds.contains(post.id),
                   );
 
                   for (var id in unlikedIds) {
-                    final index = _posts.indexWhere((p) => p['id'] == id);
+                    final index = _posts.indexWhere((p) => p.id == id);
                     if (index != -1) {
-                      final currentCount = _getLikeCount(_posts[index]);
+                      final currentCount = _posts[index].likeCount;
                       if (currentCount > 0) {
-                        _posts[index]['likes'] = [
-                          {'count': currentCount - 1},
-                        ];
+                        _posts[index] = _posts[index].copyWith(
+                          likeCount: currentCount - 1,
+                        );
                       }
                     }
                   }
@@ -147,10 +130,10 @@ class _HomePageState extends State<HomePage> {
                 itemCount: _posts.length,
                 itemBuilder: (context, index) {
                   final post = _posts[index];
-                  final postId = post['id'] as int;
+                  final postId = post.id;
                   final isLiked = _isLiked(postId);
 
-                  return Post(
+                  return PostWidget(
                     key: ValueKey(postId),
                     post: post,
                     initialIsLiked: isLiked,

@@ -21,10 +21,20 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return AdaptiveTheme(
+      light: ThemeData(
+       brightness: Brightness.light,
+      ),
+      dark: ThemeData(
+       brightness: Brightness.dark,
+      ),
+      initial: AdaptiveThemeMode.system,
+      builder: (theme, darkTheme) => MaterialApp(
       title: 'Tseretnip',
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      theme: theme,
+      darkTheme: darkTheme,
       home: const AuthGate(),
+      ),
     );
   }
 }

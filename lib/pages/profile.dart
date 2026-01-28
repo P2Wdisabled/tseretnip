@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import '../services/core/services/supabase_repository.dart';
 
@@ -19,9 +20,9 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   
-  Map<String, dynamic>? _profile;
-  List<Map<String, dynamic>> _posts = [];
-  List<Map<String, dynamic>> _likedPosts = [];
+  Account? _profile;
+  List<Post> _posts = [];
+  List<Post> _likedPosts = [];
   bool _isLoading = true;
   bool _isOwnProfile = false;
   bool _isEditing = false;
@@ -52,8 +53,8 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       if (_profile != null) {
-        _usernameController.text = _profile!['username'] ?? '';
-        _descriptionController.text = _profile!['description'] ?? '';
+        _usernameController.text = _profile!.username ?? '';
+        _descriptionController.text = _profile!.description ?? '';
       }
       
       // Load user's posts
@@ -81,7 +82,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   bool _isLiked(int postId) {
-    return _likedPosts.any((element) => element['post_id'] == postId);
+    return _likedPosts.any((post) => post.id == postId);
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -207,8 +208,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 image: DecorationImage(
-                                  image: _profile!['banner'] != null && _profile!['banner'].toString().isNotEmpty
-                                      ? NetworkImage(_profile!['banner'])
+                                  image: _profile!.banner != null && _profile!.banner!.isNotEmpty
+                                      ? NetworkImage(_profile!.banner!)
                                       : const AssetImage('assets/images/default-banner.jpg') as ImageProvider,
                                   fit: BoxFit.cover,
                                 ),
@@ -259,8 +260,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                     child: CircleAvatar(
                                       radius: 70,
-                                      backgroundImage: _profile!['avatar'] != null && _profile!['avatar'].toString().isNotEmpty
-                                          ? NetworkImage(_profile!['avatar'])
+                                    backgroundImage: _profile!.avatar != null && _profile!.avatar!.isNotEmpty
+                                        ? NetworkImage(_profile!.avatar!)
                                           : const AssetImage('assets/images/default.png') as ImageProvider,
                                     ),
                                   ),
@@ -307,7 +308,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               )
                             else
                               Text(
-                                _profile!['username'] ?? 'Utilisateur',
+                                _profile!.username ?? 'Utilisateur',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.playfairDisplay(
                                   fontSize: 32,
@@ -344,7 +345,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
                                 child: Text(
-                                  _profile!['description'] ?? 'Aucune description',
+                                  _profile!.description ?? 'Aucune description',
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
@@ -364,8 +365,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   onPressed: () {
                                     setState(() {
                                       _isEditing = false;
-                                      _usernameController.text = _profile!['username'] ?? '';
-                                      _descriptionController.text = _profile!['description'] ?? '';
+                                      _usernameController.text = _profile!.username ?? '';
+                                      _descriptionController.text = _profile!.description ?? '';
                                     });
                                   },
                                   style: OutlinedButton.styleFrom(
@@ -415,8 +416,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 8),
                         ..._posts.map((post) {
-                          final postId = post['id'] as int;
-                          return Post(
+                          final postId = post.id;
+                          return PostWidget(
                             key: ValueKey(postId),
                             post: post,
                             initialIsLiked: _isLiked(postId),
