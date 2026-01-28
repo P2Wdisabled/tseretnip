@@ -59,8 +59,7 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
 
 		try {
 			final client = Supabase.instance.client;
-			//final userId = client.auth.currentUser?.id;
-      final userId = 1; // Temporary static user ID for testing
+			final userId = client.auth.currentUser?.id;
 			if (userId == null) {
 				_showSnackBar('You must be signed in to upload.');
 				return;

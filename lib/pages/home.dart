@@ -3,6 +3,7 @@ import 'profile.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/pages/likes_page.dart';
+import 'package:tseretnip/pages/upload_photos_page.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class HomePage extends StatefulWidget {
@@ -142,6 +143,18 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.add_circle, color: Colors.black87),
+            tooltip: 'Upload Photo',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UploadPhotosPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.favorite, color: Colors.black87),
             onPressed: () async {
               final unlikedIds = await Navigator.of(context).push<List<int>>(
@@ -201,6 +214,14 @@ class _HomePageState extends State<HomePage> {
                     post: post,
                     initialIsLiked: isLiked,
                     repository: _repository,
+                    onDeleted: () {
+                      setState(() {
+                        _posts.removeWhere((p) => p['id'] == postId);
+                        _likedPosts.removeWhere(
+                          (p) => p['post_id'] == postId,
+                        );
+                      });
+                    },
                   );
                 },
               ),
