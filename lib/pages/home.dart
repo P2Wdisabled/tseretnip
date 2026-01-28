@@ -18,7 +18,7 @@ class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   List<Post> _posts = [];
-  List<Post> _likedPosts = [];
+  List<Like> _likedPosts = [];
 
   // Pagination state
   int _currentPage = 0;
@@ -55,45 +55,45 @@ class _HomePageState extends State<HomePage> {
 
     try {
       print('📡 Fetching posts from Supabase...');
-      final posts = await _repository.getPhotos();
-      print('✅ Received ${posts.length} posts');
-      List<Map<String, dynamic>> newPosts = [];
+      List<Map<String, dynamic>> newPostsData = [];
 
       if (refresh) {
         _currentPage = 0;
         _hasMore = true;
         // 1. On récupère d'abord les 3 plus récents
-        newPosts = await _repository.fetchRecentPosts();
+        newPostsData = await _repository.fetchRecentPosts();
       }
 
       // 2. On récupère la page actuelle basée sur le ratio
       final offset = _currentPage * _pageSize;
-      final rankedPosts = await _repository.fetchRankedPosts(
+      final rankedPostsData = await _repository.fetchRankedPosts(
         offset: offset,
         limit: _pageSize,
       );
 
       // Filtrer pour éviter les doublons si un post récent est aussi bien classé par ratio
-      final existingIds = newPosts.map((p) => p['id']).toSet();
-      final filteredRanked = rankedPosts.where(
+      final existingIds = newPostsData.map((p) => p['id']).toSet();
+      final filteredRanked = rankedPostsData.where(
         (p) => !existingIds.contains(p['id']),
-      );
+      ).toList();
 
-      newPosts.addAll(filteredRanked);
+      if (refresh) {
+        newPostsData.addAll(filteredRanked);
+      }
 
-      if (rankedPosts.length < _pageSize) {
+      if (rankedPostsData.length < _pageSize) {
         _hasMore = false;
       }
 
       if (mounted) {
-        final liked = await _repository.getLikedPosts();
+        final likedData = await _repository.getLikedPosts();
         setState(() {
           if (refresh) {
-            _posts = newPosts;
+            _posts = newPostsData.map((data) => Post.fromJson(data)).toList();
           } else {
-            _posts.addAll(rankedPosts); // En loadMore, on ajoute tout
+            _posts.addAll(filteredRanked.map((data) => Post.fromJson(data)).toList());
           }
-          _likedPosts = liked;
+          _likedPosts = (likedData as List<dynamic>).map((data) => Like.fromJson(data as Map<String, dynamic>)).toList();
           _currentPage++;
         });
       }
@@ -105,7 +105,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool _isLiked(int postId) {
-    return _likedPosts.any((post) => post.id == postId);
+    return _likedPosts.any((like) => like.postId == postId);
   }
 
   @override
@@ -155,7 +155,7 @@ class _HomePageState extends State<HomePage> {
               if (unlikedIds != null && unlikedIds.isNotEmpty) {
                 setState(() {
                   _likedPosts.removeWhere(
-                    (post) => unlikedIds.contains(post.id),
+                    (like) => unlikedIds.contains(like.postId),
                   );
 
                   for (var id in unlikedIds) {
@@ -207,9 +207,9 @@ class _HomePageState extends State<HomePage> {
                     repository: _repository,
                     onDeleted: () {
                       setState(() {
-                        _posts.removeWhere((p) => p['id'] == postId);
+                        _posts.removeWhere((p) => p.id == postId);
                         _likedPosts.removeWhere(
-                          (p) => p['post_id'] == postId,
+                          (like) => like.postId == postId,
                         );
                       });
                     },
