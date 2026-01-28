@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'profile.dart';
 import 'package:tseretnip/pages/likes_page.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
@@ -81,8 +82,18 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pinterest Clone'),
+        title: const Text('Home'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'My Profile',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfilePage()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.favorite),
             onPressed: () async {
