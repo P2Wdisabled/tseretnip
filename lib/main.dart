@@ -9,8 +9,6 @@ import 'package:tseretnip/pages/home.dart' as home_page;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await AppConfig.load();
-
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,

@@ -10,6 +10,7 @@ class Post extends StatelessWidget {
   final bool initialIsLiked;
   final SupabaseRepository repository;
   final Function(bool isLiked)? onLikeChanged;
+  final VoidCallback? onDeleted;
 
   const Post({
     super.key,
@@ -17,18 +18,57 @@ class Post extends StatelessWidget {
     required this.initialIsLiked,
     required this.repository,
     this.onLikeChanged,
+    this.onDeleted,
   });
 
   @override
   Widget build(BuildContext context) {
     final base64Image = post['image'] as String?;
     final postId = post['id'] as int;
-    
+
     // Author info from joined accounts table
     final author = post['accounts'] as Map<String, dynamic>?;
     final authorId = post['user_id'] as String?;
     final authorName = author?['username'] ?? 'Utilisateur';
     final authorAvatar = author?['avatar'] as String?;
+    final canDelete = authorId != null && repository.currentUser?.id == authorId;
+
+    Future<void> handleDelete() async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Delete post'),
+            content: const Text('Are you sure you want to delete this post?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) return;
+
+      try {
+        await repository.deletePhoto(postId);
+        onDeleted?.call();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post deleted')),
+        );
+      } catch (e) {
+        print('❌ Error deleting post: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting post: $e')),
+        );
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -51,6 +91,8 @@ class Post extends StatelessWidget {
             authorId: authorId,
             authorName: authorName,
             authorAvatar: authorAvatar,
+            showDelete: canDelete,
+            onDelete: handleDelete,
           ),
           
           // Post image
@@ -124,11 +166,15 @@ class _AuthorHeader extends StatelessWidget {
   final String? authorId;
   final String authorName;
   final String? authorAvatar;
+  final bool showDelete;
+  final VoidCallback? onDelete;
 
   const _AuthorHeader({
     required this.authorId,
     required this.authorName,
     this.authorAvatar,
+    this.showDelete = false,
+    this.onDelete,
   });
 
   @override
@@ -174,7 +220,7 @@ class _AuthorHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // Author info
             Expanded(
               child: Column(
@@ -198,6 +244,12 @@ class _AuthorHeader extends StatelessWidget {
                 ],
               ),
             ),
+            if (showDelete)
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.black54),
+                tooltip: 'Delete post',
+                onPressed: onDelete,
+              ),
           ],
         ),
       ),
