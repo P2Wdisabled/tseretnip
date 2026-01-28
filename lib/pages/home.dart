@@ -14,23 +14,67 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final SupabaseRepository _repository = SupabaseRepository();
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _likedPosts = [];
 
+  // Pagination state
+  int _currentPage = 0;
+  final int _pageSize = 10;
+  bool _hasMore = true;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _scrollController.addListener(_onScroll);
+    _loadData(refresh: true);
   }
 
-  Future<void> _loadData() async {
-    print('🔄 Starting to load posts...');
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoading && _hasMore) {
+        _loadData(loadMore: true);
+      }
+    }
+  }
+
+  Future<void> _loadData({bool refresh = false, bool loadMore = false}) async {
+    if (_isLoading) return;
+    if (loadMore && !_hasMore) return;
+
+    print(
+      '🔄 Starting to load posts... Refresh: $refresh, LoadMore: $loadMore',
+    );
     setState(() => _isLoading = true);
+
+    if (refresh) {
+      _currentPage = 0;
+      _hasMore = true;
+    }
+
     try {
-      print('📡 Fetching posts from Supabase...');
-      final posts = await _repository.getPhotos();
+      final offset = _currentPage * _pageSize;
+      print(
+        '📡 Fetching posts from Supabase (Limit: $_pageSize, Offset: $offset)...',
+      );
+
+      final posts = await _repository.getPhotos(
+        limit: _pageSize,
+        offset: offset,
+      );
       print('✅ Received ${posts.length} posts');
+
+      if (posts.length < _pageSize) {
+        _hasMore = false;
+      }
 
       // Print first post for debugging
       if (posts.isNotEmpty) {
@@ -42,10 +86,18 @@ class _HomePageState extends State<HomePage> {
         final liked = await _repository.getLikedPosts();
 
         setState(() {
-          _posts = posts;
-          _likedPosts = liked;
+          if (refresh) {
+            _posts = posts;
+          } else {
+            _posts.addAll(posts);
+          }
+          _likedPosts =
+              liked; // Optimally we should maybe merge or just fetch likes for new posts but for now get all is fine
+          if (posts.isNotEmpty) {
+            _currentPage++;
+          }
         });
-        print('✨ UI updated with ${_posts.length} posts');
+        print('✨ UI updated with total ${_posts.length} posts');
       }
     } catch (e, stackTrace) {
       print('❌ Error loading posts: $e');
@@ -130,7 +182,7 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadData,
+            onPressed: _isLoading ? null : () => _loadData(refresh: true),
           ),
         ],
       ),
@@ -139,10 +191,18 @@ class _HomePageState extends State<HomePage> {
           : _posts.isEmpty
           ? const Center(child: Text('No posts yet.\nPull to refresh.'))
           : RefreshIndicator(
-              onRefresh: _loadData,
+              onRefresh: () => _loadData(refresh: true),
               child: ListView.builder(
-                itemCount: _posts.length,
+                itemCount: _posts.length + (_hasMore ? 1 : 0),
+                controller: _scrollController,
                 itemBuilder: (context, index) {
+                  if (index == _posts.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
                   final post = _posts[index];
                   final postId = post['id'] as int;
                   final isLiked = _isLiked(postId);

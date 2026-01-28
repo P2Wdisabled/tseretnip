@@ -185,12 +185,16 @@ class SupabaseRepository {
     });
   }
 
-  /// Returns all photos (posts), ordered by creation date descending.
-  Future<List<Map<String, dynamic>>> getPhotos() async {
+  /// Returns photos (posts), ordered by creation date descending.
+  Future<List<Map<String, dynamic>>> getPhotos({
+    int limit = 10,
+    int offset = 0,
+  }) async {
     return await _client
         .from('posts')
-        .select('*, likes(count)') // Join with profiles if needed
-        .order('created_at', ascending: false);
+        .select('*, likes(count)')
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
   }
 
   Future<void> deletePhoto(int postId) async {
