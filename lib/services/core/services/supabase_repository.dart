@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tseretnip/models/models.dart';
 
 class SupabaseRepository {
   final SupabaseClient _client = Supabase.instance.client;
@@ -22,7 +23,6 @@ class SupabaseRepository {
     // Insérer dans la table accounts si l'utilisateur est créé
     final String userId = response.user!.id;
     if (response.user != null) {
-      print("coucou");
       try {
         await _client.from('accounts').insert({
           'id': userId,
@@ -52,7 +52,7 @@ class SupabaseRepository {
 
   User? get currentUser => _client.auth.currentUser;
 
-  Future<Map<String, dynamic>?> getCurrentProfile() async {
+  Future<Account?> getCurrentProfile() async {
     final user = currentUser;
     if (user == null) {
       print('getCurrentProfile: Aucun utilisateur connecté');
@@ -67,7 +67,7 @@ class SupabaseRepository {
           .from('accounts')
           .select()
           .eq('id', user.id)
-          .maybeSingle();
+          .maybeSingle() as Map<String, dynamic>?;
 
       if (response == null) {
         print('getCurrentProfile: Profil non trouvé, création...');
@@ -82,29 +82,29 @@ class SupabaseRepository {
             .from('accounts')
             .select()
             .eq('id', user.id)
-            .single();
+            .single() as Map<String, dynamic>;
 
         print('getCurrentProfile: Profil créé avec succès');
-        return newProfile;
+        return Account.fromJson(newProfile);
       }
 
       print('getCurrentProfile: Profil trouvé = $response');
-      return response;
+      return Account.fromJson(response);
     } catch (e) {
       print('Erreur getCurrentProfile: $e');
       return null;
     }
   }
 
-  Future<Map<String, dynamic>?> getProfileById(String userId) async {
+  Future<Account?> getProfileById(String userId) async {
     try {
       final response = await _client
           .from('accounts')
           .select()
           .eq('id', userId)
-          .single();
+          .single() as Map<String, dynamic>;
 
-      return response;
+      return Account.fromJson(response);
     } catch (e) {
       print('Erreur getProfileById: $e');
       return null;
@@ -206,15 +206,25 @@ class SupabaseRepository {
       'image': imageUrl,
       if (caption != null) 'caption': caption,
     });
+  }  /// Returns all photos (posts), ordered by creation date descending.
+  Future<List<Post>> getPhotos() async {
+    final response = await _client
+        .from('posts')
+        .select('*, likes(count), accounts(id, username, avatar)')
+        .order('created_at', ascending: false) as List<Map<String, dynamic>>;
+    
+    return response.map((json) => Post.fromJson(json)).toList();
   }
 
   /// Returns all posts by a specific user.
-  Future<List<Map<String, dynamic>>> getPostsByUserId(String userId) async {
-    return await _client
+  Future<List<Post>> getPostsByUserId(String userId) async {
+    final response = await _client
         .from('posts')
         .select('*, likes(count), accounts(id, username, avatar)')
         .eq('user_id', userId)
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false) as List<Map<String, dynamic>>;
+    
+    return response.map((json) => Post.fromJson(json)).toList();
   }
 
   Future<List<Map<String, dynamic>>> fetchRecentPosts() async {
@@ -263,18 +273,24 @@ class SupabaseRepository {
   // -----------------------------------------------------------------------------
 
   /// Returns all posts liked by the current user.
-  Future<List<Map<String, dynamic>>> getLikedPosts() async {
-    // Hardcoded user for testing
+  Future<List<Post>> getLikedPosts() async {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
 
     // Select likes and join with posts to get post details
-    return await _client
+    final response = await _client
         .from('likes')
-        .select(
-          'post_id, posts(*, likes(count), accounts(id, username, avatar))',
-        )
-        .eq('user_id', user.id);
+        .select('post_id, posts(*, likes(count), accounts(id, username, avatar))')
+        .eq('user_id', user.id) as List<Map<String, dynamic>>;
+    
+    // Transform data: Supabase returns {post_id: ..., posts: {...}}
+    final List<Post> posts = [];
+    for (var item in response) {
+      if (item['posts'] != null) {
+        posts.add(Post.fromJson(item['posts'] as Map<String, dynamic>));
+      }
+    }
+    return posts;
   }
 
   Future<void> likePost(int postId) async {

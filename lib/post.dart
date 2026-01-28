@@ -2,33 +2,74 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
-class Post extends StatelessWidget {
-  final Map<String, dynamic> post;
+class PostWidget extends StatelessWidget {
+  final Post post;
   final bool initialIsLiked;
   final SupabaseRepository repository;
   final Function(bool isLiked)? onLikeChanged;
+  final VoidCallback? onDeleted;
 
-  const Post({
+  const PostWidget({
     super.key,
     required this.post,
     required this.initialIsLiked,
     required this.repository,
     this.onLikeChanged,
+    this.onDeleted,
   });
 
   @override
   Widget build(BuildContext context) {
-    final imageSource = post['image'] as String?;
-    final postId = post['id'] as int;
+    
+    final base64Image = post.image;
+    final postId = post.id;
 
-    // Author info from joined accounts table
-    final author = post['accounts'] as Map<String, dynamic>?;
-    final authorId = post['user_id'] as String?;
-    final authorName = author?['username'] ?? 'Utilisateur';
-    final authorAvatar = author?['avatar'] as String?;
+    final author = post.author;
+    final authorId = post.userId;
+    final authorName = author?.username ?? 'Utilisateur';
+    final authorAvatar = author?.avatar;
+    final canDelete = authorId != null && repository.currentUser?.id == authorId;
+
+    Future<void> handleDelete() async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Delete post'),
+            content: const Text('Are you sure you want to delete this post?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) return;
+
+      try {
+        await repository.deletePhoto(postId);
+        onDeleted?.call();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post deleted')),
+        );
+      } catch (e) {
+        print('❌ Error deleting post: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting post: $e')),
+        );
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -51,6 +92,8 @@ class Post extends StatelessWidget {
             authorId: authorId,
             authorName: authorName,
             authorAvatar: authorAvatar,
+            showDelete: canDelete,
+            onDelete: handleDelete,
           ),
 
           // Post image
@@ -106,7 +149,7 @@ class Post extends StatelessWidget {
                   bottom: 16,
                   child: _LikeBar(
                     postId: postId,
-                    initialCount: _getLikeCount(post),
+                    initialCount: post.likeCount,
                     initialIsLiked: initialIsLiked,
                     repository: repository,
                     onLikeChanged: onLikeChanged,
@@ -119,43 +162,33 @@ class Post extends StatelessWidget {
       ),
     );
   }
-
-  int _getLikeCount(Map<String, dynamic> post) {
-    try {
-      final likesData = post['likes'] as List<dynamic>?;
-      if (likesData != null && likesData.isNotEmpty) {
-        return likesData[0]['count'] as int;
-      }
-    } catch (e) {
-      print('Error parsing like count: $e');
-    }
-    return 0;
-  }
 }
 
 class _AuthorHeader extends StatelessWidget {
-  final String? authorId;
+  final String authorId;
   final String authorName;
   final String? authorAvatar;
+  final bool showDelete;
+  final VoidCallback? onDelete;
 
   const _AuthorHeader({
     required this.authorId,
     required this.authorName,
     this.authorAvatar,
+    this.showDelete = false,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        if (authorId != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfilePage(userId: authorId),
-            ),
-          );
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilePage(userId: authorId),
+          ),
+        );
       },
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(24),
@@ -213,6 +246,12 @@ class _AuthorHeader extends StatelessWidget {
                 ],
               ),
             ),
+            if (showDelete)
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.black54),
+                tooltip: 'Delete post',
+                onPressed: onDelete,
+              ),
           ],
         ),
       ),

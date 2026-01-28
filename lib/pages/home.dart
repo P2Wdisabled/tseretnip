@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'profile.dart';
+import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/pages/likes_page.dart';
+import 'package:tseretnip/pages/upload_photos_page.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,8 +17,8 @@ class _HomePageState extends State<HomePage> {
   final SupabaseRepository _repository = SupabaseRepository();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
-  List<Map<String, dynamic>> _posts = [];
-  List<Map<String, dynamic>> _likedPosts = [];
+  List<Post> _posts = [];
+  List<Like> _likedPosts = [];
 
   // Pagination state
   int _currentPage = 0;
@@ -53,43 +54,46 @@ class _HomePageState extends State<HomePage> {
     setState(() => _isLoading = true);
 
     try {
-      List<Map<String, dynamic>> newPosts = [];
+      print('📡 Fetching posts from Supabase...');
+      List<Map<String, dynamic>> newPostsData = [];
 
       if (refresh) {
         _currentPage = 0;
         _hasMore = true;
         // 1. On récupère d'abord les 3 plus récents
-        newPosts = await _repository.fetchRecentPosts();
+        newPostsData = await _repository.fetchRecentPosts();
       }
 
       // 2. On récupère la page actuelle basée sur le ratio
       final offset = _currentPage * _pageSize;
-      final rankedPosts = await _repository.fetchRankedPosts(
+      final rankedPostsData = await _repository.fetchRankedPosts(
         offset: offset,
         limit: _pageSize,
       );
 
       // Filtrer pour éviter les doublons si un post récent est aussi bien classé par ratio
-      final existingIds = newPosts.map((p) => p['id']).toSet();
-      final filteredRanked = rankedPosts.where(
+      final existingIds = newPostsData.map((p) => p['id']).toSet();
+      final filteredRanked = rankedPostsData.where(
         (p) => !existingIds.contains(p['id']),
-      );
+      ).toList();
 
-      newPosts.addAll(filteredRanked);
+      if (refresh) {
+        newPostsData.addAll(filteredRanked);
+      }
 
-      if (rankedPosts.length < _pageSize) {
+      if (rankedPostsData.length < _pageSize) {
         _hasMore = false;
       }
 
       if (mounted) {
-        final liked = await _repository.getLikedPosts();
+        final likedData = await _repository.getLikedPosts();
         setState(() {
           if (refresh) {
-            _posts = newPosts;
+            _posts = newPostsData.map((data) => Post.fromJson(data)).toList();
           } else {
-            _posts.addAll(rankedPosts); // En loadMore, on ajoute tout
+            _posts.addAll(filteredRanked.map((data) => Post.fromJson(data)).toList());
           }
-          _likedPosts = liked;
+          _likedPosts = (likedData as List<dynamic>).map((data) => Like.fromJson(data as Map<String, dynamic>)).toList();
           _currentPage++;
         });
       }
@@ -101,19 +105,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool _isLiked(int postId) {
-    return _likedPosts.any((element) => element['post_id'] == postId);
-  }
-
-  int _getLikeCount(Map<String, dynamic> post) {
-    try {
-      final likesData = post['likes'] as List<dynamic>?;
-      if (likesData != null && likesData.isNotEmpty) {
-        return likesData[0]['count'] as int;
-      }
-    } catch (e) {
-      print('Error parsing like count: $e');
-    }
-    return 0;
+    return _likedPosts.any((like) => like.postId == postId);
   }
 
   @override
@@ -142,6 +134,18 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.add_circle, color: Colors.black87),
+            tooltip: 'Upload Photo',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UploadPhotosPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.favorite, color: Colors.black87),
             onPressed: () async {
               final unlikedIds = await Navigator.of(context).push<List<int>>(
@@ -151,17 +155,17 @@ class _HomePageState extends State<HomePage> {
               if (unlikedIds != null && unlikedIds.isNotEmpty) {
                 setState(() {
                   _likedPosts.removeWhere(
-                    (element) => unlikedIds.contains(element['post_id']),
+                    (like) => unlikedIds.contains(like.postId),
                   );
 
                   for (var id in unlikedIds) {
-                    final index = _posts.indexWhere((p) => p['id'] == id);
+                    final index = _posts.indexWhere((p) => p.id == id);
                     if (index != -1) {
-                      final currentCount = _getLikeCount(_posts[index]);
+                      final currentCount = _posts[index].likeCount;
                       if (currentCount > 0) {
-                        _posts[index]['likes'] = [
-                          {'count': currentCount - 1},
-                        ];
+                        _posts[index] = _posts[index].copyWith(
+                          likeCount: currentCount - 1,
+                        );
                       }
                     }
                   }
@@ -193,14 +197,22 @@ class _HomePageState extends State<HomePage> {
                   }
 
                   final post = _posts[index];
-                  final postId = post['id'] as int;
+                  final postId = post.id;
                   final isLiked = _isLiked(postId);
 
-                  return Post(
+                  return PostWidget(
                     key: ValueKey(postId),
                     post: post,
                     initialIsLiked: isLiked,
                     repository: _repository,
+                    onDeleted: () {
+                      setState(() {
+                        _posts.removeWhere((p) => p.id == postId);
+                        _likedPosts.removeWhere(
+                          (like) => like.postId == postId,
+                        );
+                      });
+                    },
                   );
                 },
               ),
