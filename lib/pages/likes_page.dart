@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tseretnip/pages/home.dart';
+import 'package:tseretnip/post.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class LikesPage extends StatefulWidget {
@@ -64,25 +64,20 @@ class _LikesPageState extends State<LikesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Assuming Android 14+ or manual Pop handling is not strictly required if using WillPopScope logic
-    // or simply wrapping in PopScope (available in newer Flutter).
-    // We will use WillPopScope for broader compatibility or PopScope if on very new SDK.
-    // Let's use PopScope as it is the modern standard.
     return PopScope(
       canPop: true,
-      onPopInvokedWithResult: (didPop, result) {
-        // This is a bit tricky with PopScope, actually Navigator.pop with result is better handled
-        // by intercepting the back button or just standard Navigator push/pop contract.
-        // However, system back button needs interception.
-      },
-      // Actually simpler: Just use WillPopScope or simply return result in Leading button.
-      // But standard Android back button returns null result by default.
-      // We need to intercept the pop.
+      onPopInvokedWithResult: (didPop, result) {},
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('My Likes'),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text(
+            'Mes Likes',
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          ),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back, color: Colors.black87),
             onPressed: () {
               Navigator.of(context).pop(_unlikedIds.toList());
             },
@@ -93,12 +88,13 @@ class _LikesPageState extends State<LikesPage> {
             : _likedPosts.isEmpty
             ? const Center(child: Text('No liked posts yet.'))
             : ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: _likedPosts.length,
                 itemBuilder: (context, index) {
                   final post = _likedPosts[index];
                   final postId = post['id'] as int;
 
-                  return PostCard(
+                  return Post(
                     key: ValueKey(postId),
                     post: post,
                     initialIsLiked: true,
