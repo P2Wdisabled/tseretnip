@@ -215,7 +215,16 @@ class SupabaseRepository {
   Future<List<Map<String, dynamic>>> getPhotos() async {
     return await _client
         .from('posts')
-        .select('*, likes(count)') // Join with profiles if needed
+        .select('*, likes(count), accounts(id, username, avatar)')
+        .order('created_at', ascending: false);
+  }
+
+  /// Returns all posts by a specific user.
+  Future<List<Map<String, dynamic>>> getPostsByUserId(String userId) async {
+    return await _client
+        .from('posts')
+        .select('*, likes(count), accounts(id, username, avatar)')
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
   }
 
@@ -238,7 +247,7 @@ class SupabaseRepository {
     // Select likes and join with posts to get post details
     return await _client
         .from('likes')
-        .select('post_id, posts(*, likes(count))')
+        .select('post_id, posts(*, likes(count), accounts(id, username, avatar))')
         .eq('user_id', user.id);
   }
 

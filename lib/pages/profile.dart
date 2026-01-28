@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tseretnip/post.dart';
 import '../services/core/services/supabase_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -19,6 +20,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _descriptionController = TextEditingController();
   
   Map<String, dynamic>? _profile;
+  List<Map<String, dynamic>> _posts = [];
+  List<Map<String, dynamic>> _likedPosts = [];
   bool _isLoading = true;
   bool _isOwnProfile = false;
   bool _isEditing = false;
@@ -34,20 +37,39 @@ class _ProfilePageState extends State<ProfilePage> {
     
     try {
       final currentUser = _repository.currentUser;
+      String targetUserId;
       
       if (widget.userId == null || widget.userId == currentUser?.id) {
         // Load current user's profile
         _isOwnProfile = true;
         _profile = await _repository.getCurrentProfile();
+        targetUserId = currentUser!.id;
       } else {
         // Load another user's profile
         _isOwnProfile = false;
         _profile = await _repository.getProfileById(widget.userId!);
+        targetUserId = widget.userId!;
       }
 
       if (_profile != null) {
         _usernameController.text = _profile!['username'] ?? '';
         _descriptionController.text = _profile!['description'] ?? '';
+      }
+      
+      // Load user's posts
+      final posts = await _repository.getPostsByUserId(targetUserId);
+      
+      // Load liked posts for current user to check like status
+      if (_isOwnProfile) {
+        _likedPosts = await _repository.getLikedPosts();
+      } else {
+        _likedPosts = await _repository.getLikedPosts();
+      }
+      
+      if (mounted) {
+        setState(() {
+          _posts = posts;
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,6 +78,10 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  bool _isLiked(int postId) {
+    return _likedPosts.any((element) => element['post_id'] == postId);
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -177,7 +203,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           alignment: Alignment.center,
                           children: [
                             Container(
-                              height: 280,
+                              height: 120,
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 image: DecorationImage(
@@ -361,6 +387,57 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                       ),
+                      
+                      // Posts section
+                      if (_posts.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Posts',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_posts.length}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Colors.black45,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ..._posts.map((post) {
+                          final postId = post['id'] as int;
+                          return Post(
+                            key: ValueKey(postId),
+                            post: post,
+                            initialIsLiked: _isLiked(postId),
+                            repository: _repository,
+                          );
+                        }),
+                        const SizedBox(height: 24),
+                      ] else if (!_isLoading) ...[
+                        Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Aucun post',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.black45,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
