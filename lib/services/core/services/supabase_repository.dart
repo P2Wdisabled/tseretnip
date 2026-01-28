@@ -54,15 +54,41 @@ class SupabaseRepository {
 
   Future<Map<String, dynamic>?> getCurrentProfile() async {
     final user = currentUser;
-    if (user == null) return null;
+    if (user == null) {
+      print('getCurrentProfile: Aucun utilisateur connecté');
+      return null;
+    }
+
+    print('getCurrentProfile: User ID = ${user.id}');
+    print('getCurrentProfile: User email = ${user.email}');
 
     try {
       final response = await _client
           .from('accounts')
           .select()
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
+      if (response == null) {
+        print('getCurrentProfile: Profil non trouvé, création...');
+        // Créer le profil s'il n'existe pas
+        await _client.from('accounts').insert({
+          'id': user.id,
+          'username': user.email?.split('@')[0] ?? 'user',
+        });
+        
+        // Récupérer le profil créé
+        final newProfile = await _client
+            .from('accounts')
+            .select()
+            .eq('id', user.id)
+            .single();
+        
+        print('getCurrentProfile: Profil créé avec succès');
+        return newProfile;
+      }
+
+      print('getCurrentProfile: Profil trouvé = $response');
       return response;
     } catch (e) {
       print('Erreur getCurrentProfile: $e');

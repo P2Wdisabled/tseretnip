@@ -149,6 +149,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     icon: const Icon(Icons.edit, color: Colors.white),
                     onPressed: () => setState(() => _isEditing = true),
                   ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.white),
+                  onPressed: () async {
+                    await _repository.signOut();
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                ),
               ]
             : null,
       ),
