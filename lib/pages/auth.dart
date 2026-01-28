@@ -56,9 +56,7 @@ class _AuthPageState extends State<AuthPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _isLogin
-                  ? 'Connexion réussie !'
-                  : 'Inscription réussie !',
+              _isLogin ? 'Connexion réussie !' : 'Inscription réussie !',
             ),
             backgroundColor: Colors.green,
           ),
@@ -67,10 +65,7 @@ class _AuthPageState extends State<AuthPage> {
     } on AuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(error.message), backgroundColor: Colors.red),
         );
       }
     } catch (error) {
@@ -115,8 +110,8 @@ class _AuthPageState extends State<AuthPage> {
                     'Tseretnip',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 48),
                   // Titre du formulaire
@@ -124,8 +119,8 @@ class _AuthPageState extends State<AuthPage> {
                     _isLogin ? 'Connexion' : 'Inscription',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 24),
 

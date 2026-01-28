@@ -76,14 +76,14 @@ class SupabaseRepository {
           'id': user.id,
           'username': user.email?.split('@')[0] ?? 'user',
         });
-        
+
         // Récupérer le profil créé
         final newProfile = await _client
             .from('accounts')
             .select()
             .eq('id', user.id)
             .single() as Map<String, dynamic>;
-        
+
         print('getCurrentProfile: Profil créé avec succès');
         return Account.fromJson(newProfile);
       }
@@ -209,9 +209,7 @@ class SupabaseRepository {
       'image_url': imageUrl,
       'caption': caption,
     });
-  }
-
-  /// Returns all photos (posts), ordered by creation date descending.
+  }  /// Returns all photos (posts), ordered by creation date descending.
   Future<List<Post>> getPhotos() async {
     final response = await _client
         .from('posts')
@@ -230,6 +228,41 @@ class SupabaseRepository {
         .order('created_at', ascending: false) as List<Map<String, dynamic>>;
     
     return response.map((json) => Post.fromJson(json)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRecentPosts() async {
+    // English comment: Fetch the 3 absolute most recent posts
+    final response = await _client
+        .from('posts')
+        .select('*, likes(count)')
+        .order('created_at', ascending: false)
+        .limit(3);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRankedPosts({
+    int offset = 0,
+    int limit = 10,
+  }) async {
+    try {
+      final List<dynamic> response = await _client.rpc(
+        'get_ranked_posts',
+        params: {'page_offset': offset, 'page_size': limit},
+      );
+
+      // Transformation pour que le format match avec votre fonction _getLikeCount
+      return response.map((post) {
+        return {
+          ...post as Map<String, dynamic>,
+          'likes': [
+            {'count': post['like_count']},
+          ],
+        };
+      }).toList();
+    } catch (e) {
+      print('Error RPC: $e');
+      return [];
+    }
   }
 
   Future<void> deletePhoto(int postId) async {

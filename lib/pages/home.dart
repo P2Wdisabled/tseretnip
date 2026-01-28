@@ -3,6 +3,7 @@ import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/pages/likes_page.dart';
+import 'package:tseretnip/pages/upload_photos_page.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class HomePage extends StatefulWidget {
@@ -14,45 +15,92 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final SupabaseRepository _repository = SupabaseRepository();
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   List<Post> _posts = [];
   List<Post> _likedPosts = [];
 
+  // Pagination state
+  int _currentPage = 0;
+  final int _pageSize = 10;
+  bool _hasMore = true;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _scrollController.addListener(_onScroll);
+    _loadData(refresh: true);
   }
 
-  Future<void> _loadData() async {
-    print('🔄 Starting to load posts...');
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoading && _hasMore) {
+        _loadData(loadMore: true);
+      }
+    }
+  }
+
+  Future<void> _loadData({bool refresh = false, bool loadMore = false}) async {
+    if (_isLoading) return;
+    if (loadMore && !_hasMore) return;
+
     setState(() => _isLoading = true);
+
     try {
       print('📡 Fetching posts from Supabase...');
       final posts = await _repository.getPhotos();
       print('✅ Received ${posts.length} posts');
+      List<Map<String, dynamic>> newPosts = [];
+
+      if (refresh) {
+        _currentPage = 0;
+        _hasMore = true;
+        // 1. On récupère d'abord les 3 plus récents
+        newPosts = await _repository.fetchRecentPosts();
+      }
+
+      // 2. On récupère la page actuelle basée sur le ratio
+      final offset = _currentPage * _pageSize;
+      final rankedPosts = await _repository.fetchRankedPosts(
+        offset: offset,
+        limit: _pageSize,
+      );
+
+      // Filtrer pour éviter les doublons si un post récent est aussi bien classé par ratio
+      final existingIds = newPosts.map((p) => p['id']).toSet();
+      final filteredRanked = rankedPosts.where(
+        (p) => !existingIds.contains(p['id']),
+      );
+
+      newPosts.addAll(filteredRanked);
+
+      if (rankedPosts.length < _pageSize) {
+        _hasMore = false;
+      }
 
       if (mounted) {
         final liked = await _repository.getLikedPosts();
-
         setState(() {
-          _posts = posts;
+          if (refresh) {
+            _posts = newPosts;
+          } else {
+            _posts.addAll(rankedPosts); // En loadMore, on ajoute tout
+          }
           _likedPosts = liked;
+          _currentPage++;
         });
-        print('✨ UI updated with ${_posts.length} posts');
       }
-    } catch (e, stackTrace) {
-      print('❌ Error loading posts: $e');
-      print('Stack trace: $stackTrace');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading posts: $e')));
-      }
+    } catch (e) {
+      print('❌ Error: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -86,6 +134,18 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.add_circle, color: Colors.black87),
+            tooltip: 'Upload Photo',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UploadPhotosPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.favorite, color: Colors.black87),
             onPressed: () async {
               final unlikedIds = await Navigator.of(context).push<List<int>>(
@@ -115,7 +175,7 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black87),
-            onPressed: _isLoading ? null : _loadData,
+            onPressed: _isLoading ? null : () => _loadData(refresh: true),
           ),
         ],
       ),
@@ -124,11 +184,18 @@ class _HomePageState extends State<HomePage> {
           : _posts.isEmpty
           ? const Center(child: Text('No posts yet.\nPull to refresh.'))
           : RefreshIndicator(
-              onRefresh: _loadData,
+              onRefresh: () => _loadData(refresh: true),
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: _posts.length,
+                itemCount: _posts.length + (_hasMore ? 1 : 0),
+                controller: _scrollController,
                 itemBuilder: (context, index) {
+                  if (index == _posts.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
                   final post = _posts[index];
                   final postId = post.id;
                   final isLiked = _isLiked(postId);
@@ -138,6 +205,14 @@ class _HomePageState extends State<HomePage> {
                     post: post,
                     initialIsLiked: isLiked,
                     repository: _repository,
+                    onDeleted: () {
+                      setState(() {
+                        _posts.removeWhere((p) => p['id'] == postId);
+                        _likedPosts.removeWhere(
+                          (p) => p['post_id'] == postId,
+                        );
+                      });
+                    },
                   );
                 },
               ),
