@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class UploadPhotosPage extends StatefulWidget {
   const UploadPhotosPage({super.key});
@@ -72,6 +74,7 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
     });
 
     try {
+      final repository = SupabaseRepository();
       final client = Supabase.instance.client;
       final userId = client.auth.currentUser?.id;
       if (userId == null) {
@@ -82,10 +85,10 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
       int successCount = 0;
 
       for (var i = 0; i < _selected.length; i++) {
-        final xFile = _selected[i];
-        final bytes = await xFile.readAsBytes();
-        final safeName = xFile.name.isNotEmpty
-            ? xFile.name.replaceAll(' ', '_')
+        final file = _selected[i];
+        final bytes = await file.readAsBytes();
+        final safeName = file.name.isNotEmpty
+            ? file.name.replaceAll(' ', '_')
             : 'photo.jpg';
         final fileName =
             '$userId/${DateTime.now().toIso8601String()}_$safeName';
@@ -96,17 +99,13 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
           fileOptions: FileOptions(
             cacheControl: '3600',
             upsert: false,
-            contentType: xFile.mimeType ?? 'image/jpeg',
+            contentType: file.mimeType ?? 'image/jpeg',
           ),
         );
 
         final imageUrl = client.storage.from('posts').getPublicUrl(fileName);
 
-        await client.from('posts').insert({
-          'user_id': userId,
-          'image': imageUrl,
-          'created_at': DateTime.now().toIso8601String(),
-        });
+        await repository.publishPhoto(imageFile: File(file.path));
 
         successCount++;
       }
