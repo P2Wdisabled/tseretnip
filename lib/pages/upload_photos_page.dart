@@ -75,8 +75,7 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
 
     try {
       final repository = SupabaseRepository();
-      final client = Supabase.instance.client;
-      final userId = client.auth.currentUser?.id;
+      final userId = repository.currentUser?.id;
       if (userId == null) {
         _showSnackBar('You must be signed in to upload.');
         return;
@@ -86,24 +85,6 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
 
       for (var i = 0; i < _selected.length; i++) {
         final file = _selected[i];
-        final bytes = await file.readAsBytes();
-        final safeName = file.name.isNotEmpty
-            ? file.name.replaceAll(' ', '_')
-            : 'photo.jpg';
-        final fileName =
-            '$userId/${DateTime.now().toIso8601String()}_$safeName';
-
-        await client.storage.from('posts').uploadBinary(
-          fileName,
-          bytes,
-          fileOptions: FileOptions(
-            cacheControl: '3600',
-            upsert: false,
-            contentType: file.mimeType ?? 'image/jpeg',
-          ),
-        );
-
-        final imageUrl = client.storage.from('posts').getPublicUrl(fileName);
 
         await repository.publishPhoto(imageFile: File(file.path));
 
