@@ -124,41 +124,40 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'Select photos and upload them to Supabase Storage.',
+                'Select photos to upload.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _uploading ? null : _pickImages,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Select photos'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _uploading ? null : _takePhoto,
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Take photo'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _uploading ? null : _clearSelection,
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Clear selection'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Selected: ${_selected.length}',
-                style: Theme.of(context).textTheme.titleSmall,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Preview',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
               const SizedBox(height: 12),
-              if (_selected.isNotEmpty)
+              if (_selected.isEmpty)
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.photo_outlined),
+                          SizedBox(height: 8),
+                          Text('No photos selected'),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -169,19 +168,132 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
                     return _PhotoPreviewCard(file: file);
                   },
                 ),
+              const SizedBox(height: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        backgroundColor: const Color(0xFFF5E6D3),
+                      ),
+                      onPressed: _uploading ? null : _pickImages,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.photo_library_outlined,
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Select photos',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        backgroundColor: const Color(0xFFF5E6D3),
+                      ),
+                      onPressed: _uploading ? null : _takePhoto,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.photo_camera_outlined,
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Take photo',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black26),
+                        backgroundColor: const Color(0xFFF5E6D3),
+                      ),
+                      onPressed: _uploading ? null : _clearSelection,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.delete_outline,
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Clear selection',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _uploading ? null : _uploadImages,
-                  icon: _uploading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload_outlined),
-                  label: Text(_uploading ? 'Uploading...' : 'Upload'),
+              Align(
+                alignment: Alignment.center,
+                child: FractionallySizedBox(
+                  widthFactor: 0.9,
+                  child: FilledButton.icon(
+                    onPressed: _uploading ? null : _uploadImages,
+                    style: FilledButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      backgroundColor: const Color(0xFFF5E6D3),
+                    ),
+                    icon: _uploading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.black87,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.cloud_upload_outlined,
+                            color: Colors.black87,
+                          ),
+                    label: Text(_uploading ? 'Uploading...' : 'Upload'),
+                  ),
                 ),
               ),
             ],
