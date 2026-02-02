@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
@@ -46,7 +47,7 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
 
   Future<void> _uploadImages() async {
     if (_selected.isEmpty) {
-      _showSnackBar('Select at least one photo.');
+      _showSnackBar(FlutterI18n.translate(context, 'upload.select_warning'));
       return;
     }
 
@@ -57,7 +58,7 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
     try {
       final repository = SupabaseRepository();
       if (repository.currentUser == null) {
-        _showSnackBar('You must be signed in to upload.');
+        _showSnackBar(FlutterI18n.translate(context, 'upload.signin_warning'));
         return;
       }
 
@@ -75,12 +76,20 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
         return;
       }
 
-      _showSnackBar('Uploaded $successCount photo(s).');
+      _showSnackBar(
+        FlutterI18n.translate(
+          context,
+          'upload.success_message',
+          translationParams: {'count': successCount.toString()},
+        ),
+      );
 
       // Clear selection after successful upload
       _clearSelection();
     } catch (error) {
-      _showSnackBar('Upload failed: $error');
+      _showSnackBar(
+        '${FlutterI18n.translate(context, 'upload.failure_message')}$error',
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -99,7 +108,9 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload Photos')),
+      appBar: AppBar(
+        title: Text(FlutterI18n.translate(context, 'upload.title')),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -107,7 +118,7 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Select photos and upload them to Supabase Storage.',
+                FlutterI18n.translate(context, 'upload.description'),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -118,18 +129,22 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
                   FilledButton.icon(
                     onPressed: _uploading ? null : _pickImages,
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Select photos'),
+                    label: Text(
+                      FlutterI18n.translate(context, 'upload.select_button'),
+                    ),
                   ),
                   OutlinedButton.icon(
                     onPressed: _uploading ? null : _clearSelection,
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('Clear selection'),
+                    label: Text(
+                      FlutterI18n.translate(context, 'upload.clear_button'),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               Text(
-                'Selected: ${_selected.length}',
+                '${FlutterI18n.translate(context, 'upload.selected_count')}${_selected.length}',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 12),
@@ -156,7 +171,17 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.cloud_upload_outlined),
-                  label: Text(_uploading ? 'Uploading...' : 'Upload'),
+                  label: Text(
+                    _uploading
+                        ? FlutterI18n.translate(
+                            context,
+                            'upload.uploading_button',
+                          )
+                        : FlutterI18n.translate(
+                            context,
+                            'upload.upload_button',
+                          ),
+                  ),
                 ),
               ),
             ],

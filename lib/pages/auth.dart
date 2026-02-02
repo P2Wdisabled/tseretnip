@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class AuthPage extends StatefulWidget {
@@ -56,7 +57,9 @@ class _AuthPageState extends State<AuthPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _isLogin ? 'Connexion réussie !' : 'Inscription réussie !',
+              _isLogin
+                  ? FlutterI18n.translate(context, 'auth.login_success')
+                  : FlutterI18n.translate(context, 'auth.register_success'),
             ),
             backgroundColor: Colors.green,
           ),
@@ -72,7 +75,9 @@ class _AuthPageState extends State<AuthPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $error'),
+            content: Text(
+              '${FlutterI18n.translate(context, 'auth.error_prefix')}$error',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -107,7 +112,7 @@ class _AuthPageState extends State<AuthPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Tseretnip',
+                    FlutterI18n.translate(context, 'app_title'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -116,7 +121,9 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 48),
                   // Titre du formulaire
                   Text(
-                    _isLogin ? 'Connexion' : 'Inscription',
+                    _isLogin
+                        ? FlutterI18n.translate(context, 'auth.login_title')
+                        : FlutterI18n.translate(context, 'auth.register_title'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w600,
@@ -128,17 +135,26 @@ class _AuthPageState extends State<AuthPage> {
                   if (!_isLogin) ...[
                     TextFormField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom d\'utilisateur',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                      decoration: InputDecoration(
+                        labelText: FlutterI18n.translate(
+                          context,
+                          'auth.username_label',
+                        ),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.person),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer un nom d\'utilisateur';
+                          return FlutterI18n.translate(
+                            context,
+                            'auth.username_required',
+                          );
                         }
                         if (value.length < 3) {
-                          return 'Le nom doit contenir au moins 3 caractères';
+                          return FlutterI18n.translate(
+                            context,
+                            'auth.username_length',
+                          );
                         }
                         return null;
                       },
@@ -204,7 +220,15 @@ class _AuthPageState extends State<AuthPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(
-                            _isLogin ? 'Se connecter' : 'S\'inscrire',
+                            _isLogin
+                                ? FlutterI18n.translate(
+                                    context,
+                                    'auth.login_button',
+                                  )
+                                : FlutterI18n.translate(
+                                    context,
+                                    'auth.register_button',
+                                  ),
                             style: const TextStyle(fontSize: 16),
                           ),
                   ),
@@ -220,8 +244,8 @@ class _AuthPageState extends State<AuthPage> {
                     },
                     child: Text(
                       _isLogin
-                          ? 'Pas de compte ? Inscrivez-vous'
-                          : 'Déjà un compte ? Connectez-vous',
+                          ? FlutterI18n.translate(context, 'auth.no_account')
+                          : FlutterI18n.translate(context, 'auth.have_account'),
                     ),
                   ),
                 ],
