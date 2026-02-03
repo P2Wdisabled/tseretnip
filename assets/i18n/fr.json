@@ -37,7 +37,12 @@
         "select_warning": "Sélectionnez au moins une photo.",
         "signin_warning": "Vous devez être connecté pour envoyer des photos.",
         "success_message": "{count} photo(s) envoyée(s).",
-        "failure_message": "Échec de l'envoi : "
+        "failure_message": "Échec de l'envoi : ",
+        "no_photos": "Aucune photo sélectionnée.",
+        "select_photos_subtitle": "Choisissez des photos à envoyer.",
+        "take_photos_subtitle": "Prenez des photos.",
+        "validate_button": "Valider la publication."
+
     },
     "profile": {
         "title": "Profil",
@@ -56,10 +61,17 @@
         "error_loading": "Erreur lors du chargement du profil : ",
         "error_update": "Erreur lors de la mise à jour : ",
         "error_upload": "Erreur lors de l'upload : ",
-        "language": "Langue"
+        "language": "Langue",
+        "my_posts": "Mes Posts",
+        "theme": "Thème",
+        "dark_mode": "Mode Sombre",
+        "light_mode": "Mode Clair",
+        "posts_count": "Publication(s)",
+        "settings": "Paramètres"
     },
     "likes": {
         "title": "Mes Likes",
-        "no_likes": "Aucun post liké pour le moment."
+        "no_likes": "Aucun post liké pour le moment.",
+        "no_likes_subtitle": "Les posts que vous aimez apparaîtront ici."
     }
 }

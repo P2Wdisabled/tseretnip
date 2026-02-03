@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
-import 'package:tseretnip/pages/profile.dart';
-import 'package:tseretnip/pages/likes_page.dart';
-import 'package:tseretnip/pages/upload_photos_page.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
+import 'package:tseretnip/theme/theme.dart';
+import 'package:tseretnip/widgets/widgets.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final List<int>? pendingUnlikedIds;
+  final VoidCallback? onLikesSynced;
+
+  const HomePage({
+    super.key,
+    this.pendingUnlikedIds,
+    this.onLikesSynced,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   final SupabaseRepository _repository = SupabaseRepository();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
@@ -26,16 +33,56 @@ class _HomePageState extends State<HomePage> {
   final int _pageSize = 10;
   bool _hasMore = true;
 
+  // Animation
+  late AnimationController _titleController;
+  late Animation<double> _titleAnimation;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _titleController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _titleAnimation = CurvedAnimation(
+      parent: _titleController,
+      curve: Curves.easeOutBack,
+    );
+    _titleController.forward();
     _loadData(refresh: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync unliked posts from likes page
+    if (widget.pendingUnlikedIds != null && 
+        widget.pendingUnlikedIds != oldWidget.pendingUnlikedIds) {
+      _syncUnlikedPosts(widget.pendingUnlikedIds!);
+    }
+  }
+
+  void _syncUnlikedPosts(List<int> unlikedIds) {
+    setState(() {
+      _likedPosts.removeWhere((like) => unlikedIds.contains(like.postId));
+      for (var id in unlikedIds) {
+        final index = _posts.indexWhere((p) => p.id == id);
+        if (index != -1) {
+          final currentCount = _posts[index].likeCount;
+          if (currentCount > 0) {
+            _posts[index] = _posts[index].copyWith(likeCount: currentCount - 1);
+          }
+        }
+      }
+    });
+    widget.onLikesSynced?.call();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -61,18 +108,15 @@ class _HomePageState extends State<HomePage> {
       if (refresh) {
         _currentPage = 0;
         _hasMore = true;
-        // 1. On récupère d'abord les 3 plus récents
         newPostsData = await _repository.fetchRecentPosts();
       }
 
-      // 2. On récupère la page actuelle basée sur le ratio
       final offset = _currentPage * _pageSize;
       final rankedPostsData = await _repository.fetchRankedPosts(
         offset: offset,
         limit: _pageSize,
       );
 
-      // Filtrer pour éviter les doublons si un post récent est aussi bien classé par ratio
       final existingIds = newPostsData.map((p) => p['id']).toSet();
       final filteredRanked = rankedPostsData
           .where((p) => !existingIds.contains(p['id']))
@@ -115,113 +159,177 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          FlutterI18n.translate(context, 'home.title'),
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Custom App Bar
+            _buildAppBar(context, isDark),
+            
+            // Content
+            Expanded(
+              child: _isLoading && _posts.isEmpty
+                  ? const Center(child: AppLoader())
+                  : _posts.isEmpty
+                      ? Center(
+                          child: AppEmptyState(
+                            message: FlutterI18n.translate(context, 'home.no_posts'),
+                            subtitle: FlutterI18n.translate(context, 'home.no_posts_subtitle'),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: () => _loadData(refresh: true),
+                          child: ListView.builder(
+                            itemCount: _posts.length + (_hasMore ? 1 : 0),
+                            controller: _scrollController,
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).padding.bottom + 100,
+                            ),
+                            itemBuilder: (context, index) {
+                              if (index == _posts.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Center(child: AppLoader(size: 40)),
+                                );
+                              }
+
+                              final post = _posts[index];
+                              final postId = post.id;
+                              final isLiked = _isLiked(postId);
+
+                              return TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                duration: Duration(milliseconds: 300 + (index * 50)),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, value, child) {
+                                  return Transform.translate(
+                                    offset: Offset(0, 20 * (1 - value)),
+                                    child: Opacity(
+                                      opacity: value,
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: PostWidget(
+                                  key: ValueKey(postId),
+                                  post: post,
+                                  initialIsLiked: isLiked,
+                                  repository: _repository,
+                                  onDeleted: () {
+                                    setState(() {
+                                      _posts.removeWhere((p) => p.id == postId);
+                                      _likedPosts.removeWhere(
+                                        (like) => like.postId == postId,
+                                      );
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.black87),
-            tooltip: FlutterI18n.translate(context, 'home.my_profile'),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.black87),
-            tooltip: FlutterI18n.translate(context, 'home.upload_photo'),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UploadPhotosPage(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.favorite, color: Colors.black87),
-            onPressed: () async {
-              final unlikedIds = await Navigator.of(context).push<List<int>>(
-                MaterialPageRoute(builder: (context) => const LikesPage()),
-              );
+      ),
+    );
+  }
 
-              if (unlikedIds != null && unlikedIds.isNotEmpty) {
-                setState(() {
-                  _likedPosts.removeWhere(
-                    (like) => unlikedIds.contains(like.postId),
-                  );
-
-                  for (var id in unlikedIds) {
-                    final index = _posts.indexWhere((p) => p.id == id);
-                    if (index != -1) {
-                      final currentCount = _posts[index].likeCount;
-                      if (currentCount > 0) {
-                        _posts[index] = _posts[index].copyWith(
-                          likeCount: currentCount - 1,
-                        );
-                      }
-                    }
-                  }
-                });
-              }
-            },
+  Widget _buildAppBar(BuildContext context, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingMd,
+        vertical: AppTheme.spacingSm,
+      ),
+      child: Row(
+        children: [
+          // Animated Title
+          ScaleTransition(
+            scale: _titleAnimation,
+            child: Text(
+              'Tseretnip',
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: isDark 
+                    ? AppColors.textPrimaryDark 
+                    : AppColors.textPrimaryLight,
+              ),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black87),
-            onPressed: _isLoading ? null : () => _loadData(refresh: true),
+          const Spacer(),
+          // Refresh button with animation
+          _AnimatedRefreshButton(
+            isLoading: _isLoading,
+            onTap: () => _loadData(refresh: true),
           ),
         ],
       ),
-      body: _isLoading && _posts.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _posts.isEmpty
-          ? Center(child: Text(FlutterI18n.translate(context, 'home.no_posts')))
-          : RefreshIndicator(
-              onRefresh: () => _loadData(refresh: true),
-              child: ListView.builder(
-                itemCount: _posts.length + (_hasMore ? 1 : 0),
-                controller: _scrollController,
-                itemBuilder: (context, index) {
-                  if (index == _posts.length) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
+    );
+  }
+}
 
-                  final post = _posts[index];
-                  final postId = post.id;
-                  final isLiked = _isLiked(postId);
+class _AnimatedRefreshButton extends StatefulWidget {
+  final bool isLoading;
+  final VoidCallback onTap;
 
-                  return PostWidget(
-                    key: ValueKey(postId),
-                    post: post,
-                    initialIsLiked: isLiked,
-                    repository: _repository,
-                    onDeleted: () {
-                      setState(() {
-                        _posts.removeWhere((p) => p.id == postId);
-                        _likedPosts.removeWhere(
-                          (like) => like.postId == postId,
-                        );
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
+  const _AnimatedRefreshButton({
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedRefreshButton> createState() => _AnimatedRefreshButtonState();
+}
+
+class _AnimatedRefreshButtonState extends State<_AnimatedRefreshButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedRefreshButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoading && !oldWidget.isLoading) {
+      _controller.repeat();
+    } else if (!widget.isLoading && oldWidget.isLoading) {
+      _controller.stop();
+      _controller.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.isLoading ? null : widget.onTap,
+      child: RotationTransition(
+        turns: _controller,
+        child: AppIcon(
+          name: AppIcon.reload,
+          size: 24,
+          color: widget.isLoading 
+              ? AppColors.textTertiaryLight 
+              : null,
+        ),
+      ),
     );
   }
 }

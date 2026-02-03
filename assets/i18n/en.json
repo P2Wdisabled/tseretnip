@@ -37,7 +37,11 @@
         "select_warning": "Select at least one photo.",
         "signin_warning": "You must be signed in to upload.",
         "success_message": "Uploaded {count} photo(s).",
-        "failure_message": "Upload failed: "
+        "failure_message": "Upload failed: ",
+        "no_photos": "No photos selected.",
+        "select_photos_subtitle": "Choose photos to upload.",
+        "take_photos_subtitle": "Take photos.",
+        "validate_button": "Validate Post."
     },
     "profile": {
         "title": "Profile",
@@ -56,10 +60,17 @@
         "error_loading": "Error loading profile: ",
         "error_update": "Error updating: ",
         "error_upload": "Error uploading: ",
-        "language": "Language"
+        "language": "Language",
+        "my_posts": "My Posts",
+        "theme": "Theme",
+        "dark_mode": "Dark Mode",
+        "light_mode": "Light Mode",
+        "posts_count": "Post(s)",
+        "settings": "Settings"
     },
     "likes": {
         "title": "My Likes",
-        "no_likes": "No posts liked yet."
+        "no_likes": "No posts liked yet.",
+        "no_likes_subtitle": "Posts you like will appear here."
     }
 }

@@ -17,6 +17,9 @@ dependencies:
   flutter_i18n: ^0.37.1
   flutter_localizations:
     sdk: flutter
+  flutter_svg: ^2.0.10+1
+  lottie: ^3.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -29,4 +32,6 @@ flutter:
     - config.json
     - assets/i18n/
     - assets/images/
+    - assets/icons/
+    - assets/animations/
 

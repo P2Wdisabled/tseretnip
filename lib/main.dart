@@ -4,8 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:tseretnip/services/core/config/app_config.dart';
+import 'package:tseretnip/theme/theme.dart';
 import 'package:tseretnip/pages/auth.dart';
-import 'package:tseretnip/pages/home.dart' as home_page;
+import 'package:tseretnip/pages/home.dart';
+import 'package:tseretnip/pages/upload_photos_page.dart';
+import 'package:tseretnip/pages/likes_page.dart';
+import 'package:tseretnip/pages/profile.dart';
+import 'package:tseretnip/widgets/widgets.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,12 +29,12 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveTheme(
-      light: ThemeData(brightness: Brightness.light),
-      dark: ThemeData(brightness: Brightness.dark),
+      light: AppTheme.lightTheme,
+      dark: AppTheme.darkTheme,
       initial: AdaptiveThemeMode.system,
       builder: (theme, darkTheme) => MaterialApp(
-        title:
-            'Tseretnip', // This title is static in MaterialApp, dynamic title requires onGenerateTitle
+        title: 'Tseretnip',
+        debugShowCheckedModeBanner: false,
         localizationsDelegates: [
           FlutterI18nDelegate(
             translationLoader: FileTranslationLoader(
@@ -60,21 +65,101 @@ class AuthGate extends StatelessWidget {
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            body: const Center(child: AppLoader()),
           );
         }
 
         final session = snapshot.hasData ? snapshot.data!.session : null;
 
         if (session != null) {
-          // L'utilisateur est connecté, afficher la page d'accueil
-          return const home_page.HomePage();
+          return const MainNavigationScreen();
         } else {
-          // L'utilisateur n'est pas connecté, afficher la page d'authentification
           return const AuthPage();
         }
       },
+    );
+  }
+}
+
+/// Main navigation screen with bottom navigation bar
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
+
+  @override
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+}
+
+class _MainNavigationScreenState extends State<MainNavigationScreen>
+    with SingleTickerProviderStateMixin {
+  int _currentIndex = 0;
+  late PageController _pageController;
+  late AnimationController _fadeController;
+
+  // Store uncommitted like changes from likes page
+  List<int>? _pendingUnlikedIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  void _onNavTap(int index) {
+    setState(() => _currentIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    setState(() => _currentIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          HomePage(
+            key: ValueKey('home_${_pendingUnlikedIds?.hashCode}'),
+            pendingUnlikedIds: _pendingUnlikedIds,
+            onLikesSynced: () {
+              setState(() => _pendingUnlikedIds = null);
+            },
+          ),
+          const UploadPhotosPage(),
+          LikesPage(
+            onUnlikedIdsChanged: (ids) {
+              setState(() => _pendingUnlikedIds = ids);
+            },
+          ),
+          const ProfilePage(),
+        ],
+      ),
+      extendBody: true,
+      bottomNavigationBar: AppBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: _onNavTap,
+      ),
     );
   }
 }
