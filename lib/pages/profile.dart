@@ -2,13 +2,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:tseretnip/theme/theme.dart';
+import 'package:tseretnip/widgets/widgets.dart';
 import '../services/core/services/supabase_repository.dart';
 
 class ProfilePage extends StatefulWidget {
-  final String? userId; // If null, show current user's profile
+  final String? userId;
 
   const ProfilePage({super.key, this.userId});
 
@@ -16,7 +19,8 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage>
+    with SingleTickerProviderStateMixin {
   final SupabaseRepository _repository = SupabaseRepository();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -28,10 +32,29 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isOwnProfile = false;
   bool _isEditing = false;
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
     _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _descriptionController.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -42,12 +65,10 @@ class _ProfilePageState extends State<ProfilePage> {
       String targetUserId;
 
       if (widget.userId == null || widget.userId == currentUser?.id) {
-        // Load current user's profile
         _isOwnProfile = true;
         _profile = await _repository.getCurrentProfile();
         targetUserId = currentUser!.id;
       } else {
-        // Load another user's profile
         _isOwnProfile = false;
         _profile = await _repository.getProfileById(widget.userId!);
         targetUserId = widget.userId!;
@@ -58,31 +79,25 @@ class _ProfilePageState extends State<ProfilePage> {
         _descriptionController.text = _profile!.description ?? '';
       }
 
-      // Load user's posts
       final posts = await _repository.getPostsByUserId(targetUserId);
-
-      // Load liked posts for current user to check like status
-      if (_isOwnProfile) {
-        _likedPosts = await _repository.getLikedPosts();
-      } else {
-        _likedPosts = await _repository.getLikedPosts();
-      }
+      _likedPosts = await _repository.getLikedPosts();
 
       if (mounted) {
-        setState(() {
-          _posts = posts;
-        });
+        setState(() => _posts = posts);
+        _animationController.forward();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${FlutterI18n.translate(context, 'profile.error_loading')}$e',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${FlutterI18n.translate(context, 'profile.error_loading')}$e',
+            ),
           ),
-        ),
-      );
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -99,26 +114,28 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final File imageFile = File(image.path);
       final String imageUrl = await _repository.uploadProfilePicture(imageFile);
-
       await _repository.updateProfile(avatarUrl: imageUrl);
-
       await _loadProfile();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            FlutterI18n.translate(context, 'profile.avatar_updated'),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              FlutterI18n.translate(context, 'profile.avatar_updated'),
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${FlutterI18n.translate(context, 'profile.error_upload')}$e',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${FlutterI18n.translate(context, 'profile.error_upload')}$e',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -131,26 +148,28 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final File imageFile = File(image.path);
       final String imageUrl = await _repository.uploadBanner(imageFile);
-
       await _repository.updateProfile(bannerUrl: imageUrl);
-
       await _loadProfile();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            FlutterI18n.translate(context, 'profile.banner_updated'),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              FlutterI18n.translate(context, 'profile.banner_updated'),
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${FlutterI18n.translate(context, 'profile.error_upload')}$e',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${FlutterI18n.translate(context, 'profile.error_upload')}$e',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -164,409 +183,583 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isEditing = false);
       await _loadProfile();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            FlutterI18n.translate(context, 'profile.profile_updated'),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              FlutterI18n.translate(context, 'profile.profile_updated'),
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${FlutterI18n.translate(context, 'profile.error_update')}$e',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${FlutterI18n.translate(context, 'profile.error_update')}$e',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+  void _showSettingsSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(AppTheme.spacingLg),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : AppColors.cardLight,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusLarge),
+          ),
         ),
-        actions: _isOwnProfile
-            ? [
-                if (_isEditing)
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Colors.white),
-                    onPressed: _saveProfile,
-                  )
-                else
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    onPressed: () => setState(() => _isEditing = true),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                  tooltip: FlutterI18n.translate(context, 'profile.logout'),
-                  onPressed: () async {
-                    await _repository.signOut();
-                    if (mounted) {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                ),
-                PopupMenuButton<Locale>(
-                  icon: const Icon(Icons.language, color: Colors.white),
-                  tooltip: FlutterI18n.translate(context, 'profile.language'),
-                  onSelected: (Locale locale) async {
-                    await FlutterI18n.refresh(context, locale);
-                    setState(() {}); // Trigger rebuild to reflect changes
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<Locale>>[
-                        const PopupMenuItem<Locale>(
-                          value: Locale('en'),
-                          child: Text('English'),
-                        ),
-                        const PopupMenuItem<Locale>(
-                          value: Locale('fr'),
-                          child: Text('Français'),
-                        ),
-                      ],
-                ),
-              ]
-            : [
-                PopupMenuButton<Locale>(
-                  icon: const Icon(Icons.language, color: Colors.white),
-                  tooltip: FlutterI18n.translate(context, 'profile.language'),
-                  onSelected: (Locale locale) async {
-                    await FlutterI18n.refresh(context, locale);
-                    setState(() {}); // Trigger rebuild to reflect changes
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<Locale>>[
-                        const PopupMenuItem<Locale>(
-                          value: Locale('en'),
-                          child: Text('English'),
-                        ),
-                        const PopupMenuItem<Locale>(
-                          value: Locale('fr'),
-                          child: Text('Français'),
-                        ),
-                      ],
-                ),
-              ],
-      ),
-      extendBodyBehindAppBar: true,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _profile == null
-          ? Center(
-              child: Text(
-                FlutterI18n.translate(context, 'profile.error_loading'),
-              ),
-            )
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Banner
-                  GestureDetector(
-                    onTap: _isOwnProfile && _isEditing
-                        ? _pickAndUploadBanner
-                        : null,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          height: 120,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image:
-                                  _profile!.banner != null &&
-                                      _profile!.banner!.isNotEmpty
-                                  ? NetworkImage(_profile!.banner!)
-                                  : const AssetImage(
-                                          'assets/images/default-banner.jpg',
-                                        )
-                                        as ImageProvider,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        if (_isOwnProfile && _isEditing)
-                          Positioned(
-                            top: 90,
-                            right: 16,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              padding: const EdgeInsets.all(12),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Avatar (overlapping banner)
-                  Transform.translate(
-                    offset: const Offset(0, -60),
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: _isOwnProfile && _isEditing
-                              ? _pickAndUploadImage
-                              : null,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: CircleAvatar(
-                                  radius: 70,
-                                  backgroundImage:
-                                      _profile!.avatar != null &&
-                                          _profile!.avatar!.isNotEmpty
-                                      ? NetworkImage(_profile!.avatar!)
-                                      : const AssetImage(
-                                              'assets/images/default.png',
-                                            )
-                                            as ImageProvider,
-                                ),
-                              ),
-                              if (_isOwnProfile && _isEditing)
-                                Positioned(
-                                  bottom: 5,
-                                  right: 5,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black87,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    padding: const EdgeInsets.all(10),
-                                    child: const Icon(
-                                      Icons.camera_alt,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Username
-                        if (_isEditing && _isOwnProfile)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 40.0,
-                            ),
-                            child: TextField(
-                              controller: _usernameController,
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.playfairDisplay(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                              decoration: const InputDecoration(
-                                border: UnderlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          Text(
-                            _profile!.username ??
-                                FlutterI18n.translate(
-                                  context,
-                                  'profile.default_username',
-                                ),
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.playfairDisplay(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-
-                        // Description
-                        if (_isEditing && _isOwnProfile)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32.0,
-                            ),
-                            child: TextField(
-                              controller: _descriptionController,
-                              textAlign: TextAlign.center,
-                              maxLines: 3,
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.black54,
-                                height: 1.5,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: FlutterI18n.translate(
-                                  context,
-                                  'profile.description_hint',
-                                ),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding: EdgeInsets.all(16),
-                              ),
-                            ),
-                          )
-                        else
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32.0,
-                            ),
-                            child: Text(
-                              _profile!.description ??
-                                  FlutterI18n.translate(
-                                    context,
-                                    'profile.default_description',
-                                  ),
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.black54,
-                                height: 1.6,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 24),
-
-                        // Cancel button when editing
-                        if (_isEditing && _isOwnProfile)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 40.0,
-                            ),
-                            child: OutlinedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _isEditing = false;
-                                  _usernameController.text =
-                                      _profile!.username ?? '';
-                                  _descriptionController.text =
-                                      _profile!.description ?? '';
-                                });
-                              },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 32,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                side: const BorderSide(color: Colors.black26),
-                              ),
-                              child: Text(
-                                'Annuler',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.black54,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Posts section
-                  if (_posts.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Posts',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_posts.length}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              color: Colors.black45,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ..._posts.map((post) {
-                      final postId = post.id;
-                      return PostWidget(
-                        key: ValueKey(postId),
-                        post: post,
-                        initialIsLiked: _isLiked(postId),
-                        repository: _repository,
-                      );
-                    }),
-                    const SizedBox(height: 24),
-                  ] else if (!_isLoading) ...[
-                    Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Center(
-                        child: Text(
-                          FlutterI18n.translate(context, 'profile.no_posts'),
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: Colors.black45,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.textTertiaryDark
+                    : AppColors.textTertiaryLight,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+            const SizedBox(height: AppTheme.spacingLg),
+            Text(
+              FlutterI18n.translate(context, 'profile.settings'),
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: AppTheme.spacingLg),
+
+            // Theme toggle
+            _SettingsTile(
+              icon: isDark ? AppIcon.sun : AppIcon.moon,
+              title: FlutterI18n.translate(context, 'profile.theme'),
+              subtitle: isDark
+                  ? FlutterI18n.translate(context, 'profile.dark_mode')
+                  : FlutterI18n.translate(context, 'profile.light_mode'),
+              onTap: () {
+                AdaptiveTheme.of(context).toggleThemeMode();
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+
+            // Language
+            _SettingsTile(
+              icon: AppIcon.info,
+              title: FlutterI18n.translate(context, 'profile.language'),
+              subtitle: Localizations.localeOf(context).languageCode == 'fr'
+                  ? 'Français'
+                  : 'English',
+              onTap: () async {
+                final currentLocale = Localizations.localeOf(context);
+                final newLocale = currentLocale.languageCode == 'fr'
+                    ? const Locale('en')
+                    : const Locale('fr');
+                await FlutterI18n.refresh(context, newLocale);
+                if (mounted) {
+                  Navigator.pop(context);
+                  setState(() {});
+                }
+              },
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+
+            // Logout
+            _SettingsTile(
+              icon: AppIcon.logout,
+              title: FlutterI18n.translate(context, 'profile.logout'),
+              isDestructive: true,
+              onTap: () async {
+                Navigator.pop(context);
+                await _repository.signOut();
+              },
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
     );
   }
 
   @override
-  void dispose() {
-    _usernameController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: _isLoading
+          ? const Center(child: AppLoader())
+          : _profile == null
+              ? Center(
+                  child: Text(
+                    FlutterI18n.translate(context, 'profile.error_loading'),
+                  ),
+                )
+              : FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: CustomScrollView(
+                    slivers: [
+                      // Banner & Avatar
+                      SliverToBoxAdapter(
+                        child: _buildHeader(context, isDark),
+                      ),
+
+                      // Profile Info
+                      SliverToBoxAdapter(
+                        child: _buildProfileInfo(context, isDark),
+                      ),
+
+                      // Posts section
+                      SliverToBoxAdapter(
+                        child: _buildPostsHeader(context, isDark),
+                      ),
+
+                      // Posts grid
+                      _posts.isEmpty
+                          ? SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: AppEmptyState(
+                                  message: FlutterI18n.translate(
+                                    context,
+                                    'profile.no_posts',
+                                  ),
+                                ),
+                              ),
+                            )
+                          : SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final post = _posts[index];
+                                  return PostWidget(
+                                    key: ValueKey(post.id),
+                                    post: post,
+                                    initialIsLiked: _isLiked(post.id),
+                                    repository: _repository,
+                                  );
+                                },
+                                childCount: _posts.length,
+                              ),
+                            ),
+
+                      // Bottom padding
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: MediaQuery.of(context).padding.bottom + 100,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Banner
+        GestureDetector(
+          onTap: _isOwnProfile && _isEditing ? _pickAndUploadBanner : null,
+          child: Container(
+            height: 160,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: _profile!.banner != null && _profile!.banner!.isNotEmpty
+                    ? NetworkImage(_profile!.banner!)
+                    : const AssetImage('assets/images/default-banner.jpg')
+                        as ImageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.5),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Back button (when viewing other profile)
+        if (!_isOwnProfile)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const AppIcon(
+                  name: AppIcon.arrowLeft,
+                  size: 24,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
+        // Settings button (own profile)
+        if (_isOwnProfile)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 16,
+            child: Row(
+              children: [
+                if (_isEditing)
+                  GestureDetector(
+                    onTap: _saveProfile,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const AppIcon(
+                        name: AppIcon.check,
+                        size: 24,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  GestureDetector(
+                    onTap: () => setState(() => _isEditing = true),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const AppIcon(
+                        name: AppIcon.edit,
+                        size: 24,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _showSettingsSheet,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const AppIcon(
+                      name: AppIcon.settings,
+                      size: 24,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Avatar
+        Positioned(
+          bottom: -50,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: GestureDetector(
+              onTap: _isOwnProfile && _isEditing ? _pickAndUploadImage : null,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.backgroundDark
+                        : AppColors.backgroundLight,
+                    width: 4,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 55,
+                  backgroundImage:
+                      _profile!.avatar != null && _profile!.avatar!.isNotEmpty
+                          ? NetworkImage(_profile!.avatar!)
+                          : const AssetImage('assets/images/default.png')
+                              as ImageProvider,
+                  child: _isOwnProfile && _isEditing
+                      ? Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: AppIcon(
+                              name: AppIcon.camera,
+                              size: 32,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileInfo(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.spacingMd,
+        60,
+        AppTheme.spacingMd,
+        AppTheme.spacingMd,
+      ),
+      child: Column(
+        children: [
+          // Username
+          if (_isEditing && _isOwnProfile)
+            TextField(
+              controller: _usernameController,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color:
+                    isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ),
+              decoration: InputDecoration(
+                hintText: FlutterI18n.translate(context, 'profile.username_hint'),
+                border: InputBorder.none,
+              ),
+            )
+          else
+            Text(
+              _profile!.username ??
+                  FlutterI18n.translate(context, 'profile.default_username'),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color:
+                    isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ),
+            ),
+
+          const SizedBox(height: 8),
+
+          // Description
+          if (_isEditing && _isOwnProfile)
+            TextField(
+              controller: _descriptionController,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              style: Theme.of(context).textTheme.bodyMedium,
+              decoration: InputDecoration(
+                hintText:
+                    FlutterI18n.translate(context, 'profile.description_hint'),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                ),
+              ),
+            )
+          else
+            Text(
+              _profile!.description ??
+                  FlutterI18n.translate(context, 'profile.default_description'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+
+          const SizedBox(height: AppTheme.spacingMd),
+
+          // Stats row
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingLg,
+              vertical: AppTheme.spacingMd,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : AppColors.cardLight,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StatItem(
+                  value: _posts.length.toString(),
+                  label: FlutterI18n.translate(context, 'profile.posts_count'),
+                ),
+              ],
+            ),
+          ),
+
+          // Cancel button when editing
+          if (_isEditing && _isOwnProfile) ...[
+            const SizedBox(height: AppTheme.spacingMd),
+            OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _isEditing = false;
+                  _usernameController.text = _profile!.username ?? '';
+                  _descriptionController.text = _profile!.description ?? '';
+                });
+              },
+              child: Text(
+                FlutterI18n.translate(context, 'profile.cancel'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPostsHeader(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
+      child: Row(
+        children: [
+          AppIcon(
+            name: AppIcon.grid,
+            size: 20,
+            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            FlutterI18n.translate(context, 'profile.my_posts'),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _StatItem({
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final String icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDestructive
+        ? AppColors.error
+        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacingMd),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        ),
+        child: Row(
+          children: [
+            AppIcon(
+              name: icon,
+              size: 24,
+              color: color,
+            ),
+            const SizedBox(width: AppTheme.spacingMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: isDark
+                  ? AppColors.textTertiaryDark
+                  : AppColors.textTertiaryLight,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

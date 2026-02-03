@@ -2,10 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:tseretnip/theme/theme.dart';
+import 'package:tseretnip/widgets/widgets.dart';
 
 class PostWidget extends StatelessWidget {
   final Post post;
@@ -75,8 +78,10 @@ class PostWidget extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5E6D3), // Beige/cream color like Dribbble
-        borderRadius: BorderRadius.circular(24),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.cardDark
+            : AppColors.cardLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -100,8 +105,8 @@ class PostWidget extends StatelessWidget {
           // Post image
           ClipRRect(
             borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(24),
+              bottomLeft: Radius.circular(AppTheme.radiusLarge),
+              bottomRight: Radius.circular(AppTheme.radiusLarge),
             ),
             child: Stack(
               children: [
@@ -181,6 +186,8 @@ class _AuthorHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -191,8 +198,8 @@ class _AuthorHeader extends StatelessWidget {
         );
       },
       borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(24),
-        topRight: Radius.circular(24),
+        topLeft: Radius.circular(AppTheme.radiusLarge),
+        topRight: Radius.circular(AppTheme.radiusLarge),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -202,7 +209,10 @@ class _AuthorHeader extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  width: 2,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -213,7 +223,7 @@ class _AuthorHeader extends StatelessWidget {
               ),
               child: CircleAvatar(
                 radius: 22,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: isDark ? AppColors.surfaceDark : Colors.grey[300],
                 backgroundImage:
                     authorAvatar != null && authorAvatar!.isNotEmpty
                     ? NetworkImage(authorAvatar!)
@@ -233,17 +243,17 @@ class _AuthorHeader extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                     ),
                   ),
                 ],
               ),
             ),
             if (showDelete)
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.black54),
-                tooltip: 'Delete post',
-                onPressed: onDelete,
+              AnimatedIconButton(
+                iconName: AppIcon.trash,
+                onTap: onDelete ?? () {},
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
               ),
           ],
         ),
@@ -271,15 +281,33 @@ class _LikeBar extends StatefulWidget {
   State<_LikeBar> createState() => _LikeBarState();
 }
 
-class _LikeBarState extends State<_LikeBar> {
+class _LikeBarState extends State<_LikeBar> with SingleTickerProviderStateMixin {
   late bool _isLiked;
   late int _likeCount;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  bool _showLottie = false;
 
   @override
   void initState() {
     super.initState();
     _isLiked = widget.initialIsLiked;
     _likeCount = widget.initialCount;
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -303,8 +331,21 @@ class _LikeBarState extends State<_LikeBar> {
       } else {
         _likeCount++;
         _isLiked = true;
+        _showLottie = true;
       }
     });
+
+    // Play animation
+    _animationController.forward().then((_) {
+      _animationController.reverse();
+    });
+
+    // Hide lottie after animation
+    if (_isLiked) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) setState(() => _showLottie = false);
+      });
+    }
 
     widget.onLikeChanged?.call(_isLiked);
 
@@ -320,6 +361,7 @@ class _LikeBarState extends State<_LikeBar> {
         setState(() {
           _isLiked = previousLikedState;
           _likeCount = previousCount;
+          _showLottie = false;
         });
         widget.onLikeChanged?.call(_isLiked);
 
@@ -332,10 +374,12 @@ class _LikeBarState extends State<_LikeBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: (isDark ? Colors.black : Colors.white).withOpacity(0.95),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
@@ -352,18 +396,48 @@ class _LikeBarState extends State<_LikeBar> {
             onTap: _toggleLike,
             child: Row(
               children: [
-                Icon(
-                  _isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: _isLiked ? Colors.red : Colors.black54,
-                  size: 24,
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: AppIcon(
+                        name: _isLiked ? AppIcon.heartFilled : AppIcon.heart,
+                        size: 24,
+                        color: _isLiked ? AppColors.like : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                      ),
+                    ),
+                    if (_showLottie)
+                      SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: Lottie.asset(
+                          'assets/animations/heart_like.json',
+                          repeat: false,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  _formatCount(_likeCount),
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) {
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.5),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: FadeTransition(opacity: animation, child: child),
+                    );
+                  },
+                  child: Text(
+                    _formatCount(_likeCount),
+                    key: ValueKey<int>(_likeCount),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    ),
                   ),
                 ),
               ],
