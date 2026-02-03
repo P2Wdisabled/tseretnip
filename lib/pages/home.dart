@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/pages/profile.dart';
@@ -73,9 +74,9 @@ class _HomePageState extends State<HomePage> {
 
       // Filtrer pour éviter les doublons si un post récent est aussi bien classé par ratio
       final existingIds = newPostsData.map((p) => p['id']).toSet();
-      final filteredRanked = rankedPostsData.where(
-        (p) => !existingIds.contains(p['id']),
-      ).toList();
+      final filteredRanked = rankedPostsData
+          .where((p) => !existingIds.contains(p['id']))
+          .toList();
 
       if (refresh) {
         newPostsData.addAll(filteredRanked);
@@ -91,9 +92,13 @@ class _HomePageState extends State<HomePage> {
           if (refresh) {
             _posts = newPostsData.map((data) => Post.fromJson(data)).toList();
           } else {
-            _posts.addAll(filteredRanked.map((data) => Post.fromJson(data)).toList());
+            _posts.addAll(
+              filteredRanked.map((data) => Post.fromJson(data)).toList(),
+            );
           }
-          _likedPosts = (likedData as List<dynamic>).map((data) => Like.fromJson(data as Map<String, dynamic>)).toList();
+          _likedPosts = (likedData as List<dynamic>)
+              .map((data) => Like.fromJson(data as Map<String, dynamic>))
+              .toList();
           _currentPage++;
         });
       }
@@ -115,9 +120,9 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Tseretnip',
-          style: TextStyle(
+        title: Text(
+          FlutterI18n.translate(context, 'home.title'),
+          style: const TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
           ),
@@ -125,7 +130,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.person, color: Colors.black87),
-            tooltip: 'My Profile',
+            tooltip: FlutterI18n.translate(context, 'home.my_profile'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -135,7 +140,7 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.add_circle, color: Colors.black87),
-            tooltip: 'Upload Photo',
+            tooltip: FlutterI18n.translate(context, 'home.upload_photo'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -182,7 +187,7 @@ class _HomePageState extends State<HomePage> {
       body: _isLoading && _posts.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : _posts.isEmpty
-          ? const Center(child: Text('No posts yet.\nPull to refresh.'))
+          ? Center(child: Text(FlutterI18n.translate(context, 'home.no_posts')))
           : RefreshIndicator(
               onRefresh: () => _loadData(refresh: true),
               child: ListView.builder(

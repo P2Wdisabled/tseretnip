@@ -1,0 +1,65 @@
+{
+    "app_title": "Tseretnip",
+    "auth": {
+        "login_title": "Login",
+        "register_title": "Register",
+        "username_label": "Username",
+        "email_label": "Email",
+        "password_label": "Password",
+        "login_button": "Login",
+        "register_button": "Register",
+        "no_account": "No account? Register",
+        "have_account": "Already have an account? Login",
+        "login_success": "Login successful!",
+        "register_success": "Registration successful!",
+        "error_prefix": "Error: ",
+        "username_required": "Please enter a username",
+        "username_length": "Username must be at least 3 characters",
+        "email_required": "Please enter your email",
+        "email_invalid": "Invalid email",
+        "password_required": "Please enter your password",
+        "password_length": "Password must be at least 6 characters"
+    },
+    "home": {
+        "title": "Tseretnip",
+        "my_profile": "My Profile",
+        "upload_photo": "Upload Photo",
+        "no_posts": "No posts yet.\nPull to refresh."
+    },
+    "upload": {
+        "title": "Upload Photos",
+        "description": "Select photos and upload them to Supabase Storage.",
+        "select_button": "Select photos",
+        "clear_button": "Clear selection",
+        "selected_count": "Selected: ",
+        "upload_button": "Upload",
+        "uploading_button": "Uploading...",
+        "select_warning": "Select at least one photo.",
+        "signin_warning": "You must be signed in to upload.",
+        "success_message": "Uploaded {count} photo(s).",
+        "failure_message": "Upload failed: "
+    },
+    "profile": {
+        "title": "Profile",
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Cancel",
+        "logout": "Logout",
+        "posts": "Posts",
+        "no_posts": "No posts",
+        "default_username": "User",
+        "default_description": "No description",
+        "description_hint": "Tell us about yourself...",
+        "profile_updated": "Profile updated!",
+        "avatar_updated": "Profile picture updated!",
+        "banner_updated": "Banner updated!",
+        "error_loading": "Error loading profile: ",
+        "error_update": "Error updating: ",
+        "error_upload": "Error uploading: ",
+        "language": "Language"
+    },
+    "likes": {
+        "title": "My Likes",
+        "no_likes": "No posts liked yet."
+    }
+}

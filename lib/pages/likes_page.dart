@@ -3,6 +3,9 @@ import 'package:tseretnip/models/models.dart';
 import 'package:tseretnip/post.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+
 class LikesPage extends StatefulWidget {
   const LikesPage({super.key});
 
@@ -63,9 +66,12 @@ class _LikesPageState extends State<LikesPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
-          title: const Text(
-            'Mes Likes',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          title: Text(
+            FlutterI18n.translate(context, 'likes.title'),
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
@@ -77,7 +83,18 @@ class _LikesPageState extends State<LikesPage> {
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _likedPosts.isEmpty
-            ? const Center(child: Text('No liked posts yet.'))
+            ? Center(
+                child: Text(
+                  FlutterI18n.translate(context, 'likes.no_likes'),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    height: 1.6,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              )
             : ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: _likedPosts.length,

@@ -63,13 +63,11 @@ class SupabaseRepository {
     print('getCurrentProfile: User email = ${user.email}');
 
     try {
-      final response =
-          await _client
-                  .from('accounts')
-                  .select()
-                  .eq('id', user.id)
-                  .maybeSingle()
-              as Map<String, dynamic>?;
+      final response = await _client
+          .from('accounts')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
       if (response == null) {
         print('getCurrentProfile: Profil non trouvé, création...');
@@ -80,9 +78,11 @@ class SupabaseRepository {
         });
 
         // Récupérer le profil créé
-        final newProfile =
-            await _client.from('accounts').select().eq('id', user.id).single()
-                as Map<String, dynamic>;
+        final newProfile = await _client
+            .from('accounts')
+            .select()
+            .eq('id', user.id)
+            .single();
 
         print('getCurrentProfile: Profil créé avec succès');
         return Account.fromJson(newProfile);
@@ -98,9 +98,11 @@ class SupabaseRepository {
 
   Future<Account?> getProfileById(String userId) async {
     try {
-      final response =
-          await _client.from('accounts').select().eq('id', userId).single()
-              as Map<String, dynamic>;
+      final response = await _client
+          .from('accounts')
+          .select()
+          .eq('id', userId)
+          .single();
 
       return Account.fromJson(response);
     } catch (e) {
@@ -208,25 +210,21 @@ class SupabaseRepository {
 
   /// Returns all photos (posts), ordered by creation date descending.
   Future<List<Post>> getPhotos() async {
-    final response =
-        await _client
-                .from('posts')
-                .select('*, likes(count), accounts(id, username, avatar)')
-                .order('created_at', ascending: false)
-            as List<Map<String, dynamic>>;
+    final response = await _client
+        .from('posts')
+        .select('*, likes(count), accounts(id, username, avatar)')
+        .order('created_at', ascending: false);
 
     return response.map((json) => Post.fromJson(json)).toList();
   }
 
   /// Returns all posts by a specific user.
   Future<List<Post>> getPostsByUserId(String userId) async {
-    final response =
-        await _client
-                .from('posts')
-                .select('*, likes(count), accounts(id, username, avatar)')
-                .eq('user_id', userId)
-                .order('created_at', ascending: false)
-            as List<Map<String, dynamic>>;
+    final response = await _client
+        .from('posts')
+        .select('*, likes(count), accounts(id, username, avatar)')
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
 
     return response.map((json) => Post.fromJson(json)).toList();
   }
@@ -256,12 +254,12 @@ class SupabaseRepository {
 
       // Récupérer les IDs des posts pour faire une requête complète avec les données d'auteur
       final postIds = response.map((post) => post['id']).toList();
-      
+
       // Faire une requête pour récupérer les posts complets avec les données d'auteur
       final completePostsResponse = await _client
           .from('posts')
           .select('*, likes(count), accounts(id, username, avatar)')
-          .inFilter('id', postIds) as List<Map<String, dynamic>>;
+          .inFilter('id', postIds);
 
       // Maintenir l'ordre du RPC en triant selon l'ordre original
       final orderedPosts = <Map<String, dynamic>>[];
@@ -324,14 +322,12 @@ class SupabaseRepository {
     if (user == null) throw Exception('User not logged in');
 
     // Select likes and join with posts to get post details
-    final response =
-        await _client
-                .from('likes')
-                .select(
-                  'post_id, posts(*, likes(count), accounts(id, username, avatar))',
-                )
-                .eq('user_id', user.id)
-            as List<Map<String, dynamic>>;
+    final response = await _client
+        .from('likes')
+        .select(
+          'post_id, posts(*, likes(count), accounts(id, username, avatar))',
+        )
+        .eq('user_id', user.id);
 
     // Transform data: Supabase returns {post_id: ..., posts: {...}}
     final List<Post> posts = [];
