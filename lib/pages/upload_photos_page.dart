@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tseretnip/services/core/services/supabase_repository.dart';
 
 class UploadPhotosPage extends StatefulWidget {
@@ -39,6 +40,24 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
     });
   }
 
+  Future<void> _takePhoto() async {
+    final image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (image == null) {
+      return;
+    }
+    setState(() {
+      _selected
+        ..clear()
+        ..add(image);
+    });
+  }
+
   void _clearSelection() {
     setState(() {
       _selected.clear();
@@ -57,7 +76,8 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
 
     try {
       final repository = SupabaseRepository();
-      if (repository.currentUser == null) {
+      final userId = repository.currentUser?.id;
+      if (userId == null) {
         _showSnackBar(FlutterI18n.translate(context, 'upload.signin_warning'));
         return;
       }
@@ -65,10 +85,10 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
       int successCount = 0;
 
       for (var i = 0; i < _selected.length; i++) {
-        final xFile = _selected[i];
-        final file = File(xFile.path);
+        final file = _selected[i];
 
-        await repository.publishPhoto(imageFile: file);
+        await repository.publishPhoto(imageFile: File(file.path));
+
         successCount++;
       }
 
@@ -115,40 +135,40 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                FlutterI18n.translate(context, 'upload.description'),
+              Text(                
+                FlutterI18n.translate(context, 'upload.select_button'),,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _uploading ? null : _pickImages,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: Text(
-                      FlutterI18n.translate(context, 'upload.select_button'),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _uploading ? null : _clearSelection,
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(
-                      FlutterI18n.translate(context, 'upload.clear_button'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${FlutterI18n.translate(context, 'upload.selected_count')}${_selected.length}',
-                style: Theme.of(context).textTheme.titleSmall,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Preview',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
               const SizedBox(height: 12),
-              if (_selected.isNotEmpty)
+              if (_selected.isEmpty)
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.photo_outlined),
+                          SizedBox(height: 8),
+                          Text('No photos selected'),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -159,25 +179,134 @@ class _UploadPhotosPageState extends State<UploadPhotosPage> {
                     return _PhotoPreviewCard(file: file);
                   },
                 ),
+              const SizedBox(height: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        backgroundColor: const Color(0xFFF5E6D3),
+                      ),
+                      onPressed: _uploading ? null : _pickImages,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.photo_library_outlined,
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Select photos',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        backgroundColor: const Color(0xFFF5E6D3),
+                      ),
+                      onPressed: _uploading ? null : _takePhoto,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.photo_camera_outlined,
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Take photo',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black26),
+                        backgroundColor: const Color(0xFFF5E6D3),
+                      ),
+                      onPressed: _uploading ? null : _clearSelection,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.delete_outline,
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Clear selection',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _uploading ? null : _uploadImages,
-                  icon: _uploading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload_outlined),
-                  label: Text(
-                    _uploading
-                        ? FlutterI18n.translate(
+              Align(
+                alignment: Alignment.center,
+                child: FractionallySizedBox(
+                  widthFactor: 0.9,
+                  child: FilledButton.icon(
+                    onPressed: _uploading ? null : _uploadImages,
+                    style: FilledButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      backgroundColor: const Color(0xFFF5E6D3),
+                    ),
+                    icon: _uploading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.black87,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.cloud_upload_outlined,
+                            color: Colors.black87,
+                          ),
+                    label: Text(_uploading ? FlutterI18n.translate(
                             context,
                             'upload.uploading_button',
-                          )
-                        : FlutterI18n.translate(
+                          ) : FlutterI18n.translate(
                             context,
                             'upload.upload_button',
                           ),
