@@ -166,17 +166,26 @@ class _AuthPageState extends State<AuthPage> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
+                    decoration: InputDecoration(
+                      labelText: FlutterI18n.translate(
+                        context,
+                        'auth.email_label',
+                      ),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer votre email';
+                        return FlutterI18n.translate(
+                          context,
+                          'auth.email_required',
+                        );
                       }
                       if (!value.contains('@')) {
-                        return 'Email invalide';
+                        return FlutterI18n.translate(
+                          context,
+                          'auth.email_invalid',
+                        );
                       }
                       return null;
                     },
@@ -187,17 +196,26 @@ class _AuthPageState extends State<AuthPage> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Mot de passe',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                    decoration: InputDecoration(
+                      labelText: FlutterI18n.translate(
+                        context,
+                        'auth.password_label',
+                      ),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer votre mot de passe';
+                        return FlutterI18n.translate(
+                          context,
+                          'auth.password_required',
+                        );
                       }
                       if (value.length < 6) {
-                        return 'Le mot de passe doit contenir au moins 6 caractères';
+                        return FlutterI18n.translate(
+                          context,
+                          'auth.password_length',
+                        );
                       }
                       return null;
                     },

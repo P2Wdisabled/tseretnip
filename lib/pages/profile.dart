@@ -8,6 +8,7 @@ import 'package:tseretnip/post.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:tseretnip/theme/theme.dart';
 import 'package:tseretnip/widgets/widgets.dart';
+import 'package:tseretnip/services/language_service.dart';
 import '../services/core/services/supabase_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -257,18 +258,20 @@ class _ProfilePageState extends State<ProfilePage>
             _SettingsTile(
               icon: AppIcon.info,
               title: FlutterI18n.translate(context, 'profile.language'),
-              subtitle: Localizations.localeOf(context).languageCode == 'fr'
-                  ? 'Français'
-                  : 'English',
+              subtitle: LanguageService().currentLocale.languageCode == 'fr'
+                  ? FlutterI18n.translate(context, 'profile.fr_label')
+                  : FlutterI18n.translate(context, 'profile.en_label'),
               onTap: () async {
-                final currentLocale = Localizations.localeOf(context);
+                final currentLocale = LanguageService().currentLocale;
                 final newLocale = currentLocale.languageCode == 'fr'
                     ? const Locale('en')
                     : const Locale('fr');
+
+                LanguageService().changeLocale(newLocale);
                 await FlutterI18n.refresh(context, newLocale);
+
                 if (mounted) {
                   Navigator.pop(context);
-                  setState(() {});
                 }
               },
             ),
@@ -299,67 +302,61 @@ class _ProfilePageState extends State<ProfilePage>
       body: _isLoading
           ? const Center(child: AppLoader())
           : _profile == null
-              ? Center(
-                  child: Text(
-                    FlutterI18n.translate(context, 'profile.error_loading'),
-                  ),
-                )
-              : FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: CustomScrollView(
-                    slivers: [
-                      // Banner & Avatar
-                      SliverToBoxAdapter(
-                        child: _buildHeader(context, isDark),
-                      ),
+          ? Center(
+              child: Text(
+                FlutterI18n.translate(context, 'profile.error_loading'),
+              ),
+            )
+          : FadeTransition(
+              opacity: _fadeAnimation,
+              child: CustomScrollView(
+                slivers: [
+                  // Banner & Avatar
+                  SliverToBoxAdapter(child: _buildHeader(context, isDark)),
 
-                      // Profile Info
-                      SliverToBoxAdapter(
-                        child: _buildProfileInfo(context, isDark),
-                      ),
+                  // Profile Info
+                  SliverToBoxAdapter(child: _buildProfileInfo(context, isDark)),
 
-                      // Posts section
-                      SliverToBoxAdapter(
-                        child: _buildPostsHeader(context, isDark),
-                      ),
+                  // Posts section
+                  SliverToBoxAdapter(child: _buildPostsHeader(context, isDark)),
 
-                      // Posts grid
-                      _posts.isEmpty
-                          ? SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32.0),
-                                child: AppEmptyState(
-                                  message: FlutterI18n.translate(
-                                    context,
-                                    'profile.no_posts',
-                                  ),
-                                ),
-                              ),
-                            )
-                          : SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final post = _posts[index];
-                                  return PostWidget(
-                                    key: ValueKey(post.id),
-                                    post: post,
-                                    initialIsLiked: _isLiked(post.id),
-                                    repository: _repository,
-                                  );
-                                },
-                                childCount: _posts.length,
+                  // Posts grid
+                  _posts.isEmpty
+                      ? SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: AppEmptyState(
+                              message: FlutterI18n.translate(
+                                context,
+                                'profile.no_posts',
                               ),
                             ),
-
-                      // Bottom padding
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: MediaQuery.of(context).padding.bottom + 100,
+                          ),
+                        )
+                      : SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final post = _posts[index];
+                            return PostWidget(
+                              key: ValueKey(post.id),
+                              post: post,
+                              initialIsLiked: _isLiked(post.id),
+                              repository: _repository,
+                            );
+                          }, childCount: _posts.length),
                         ),
-                      ),
-                    ],
+
+                  // Bottom padding
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: MediaQuery.of(context).padding.bottom + 100,
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -378,7 +375,7 @@ class _ProfilePageState extends State<ProfilePage>
                 image: _profile!.banner != null && _profile!.banner!.isNotEmpty
                     ? NetworkImage(_profile!.banner!)
                     : const AssetImage('assets/images/default-banner.jpg')
-                        as ImageProvider,
+                          as ImageProvider,
                 fit: BoxFit.cover,
               ),
             ),
@@ -387,10 +384,7 @@ class _ProfilePageState extends State<ProfilePage>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.5),
-                  ],
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
                 ),
               ),
             ),
@@ -507,9 +501,9 @@ class _ProfilePageState extends State<ProfilePage>
                   radius: 55,
                   backgroundImage:
                       _profile!.avatar != null && _profile!.avatar!.isNotEmpty
-                          ? NetworkImage(_profile!.avatar!)
-                          : const AssetImage('assets/images/default.png')
-                              as ImageProvider,
+                      ? NetworkImage(_profile!.avatar!)
+                      : const AssetImage('assets/images/default.png')
+                            as ImageProvider,
                   child: _isOwnProfile && _isEditing
                       ? Container(
                           decoration: BoxDecoration(
@@ -552,11 +546,15 @@ class _ProfilePageState extends State<ProfilePage>
               style: GoogleFonts.playfairDisplay(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color:
-                    isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                color: isDark
+                    ? AppColors.textPrimaryDark
+                    : AppColors.textPrimaryLight,
               ),
               decoration: InputDecoration(
-                hintText: FlutterI18n.translate(context, 'profile.username_hint'),
+                hintText: FlutterI18n.translate(
+                  context,
+                  'profile.username_hint',
+                ),
                 border: InputBorder.none,
               ),
             )
@@ -568,8 +566,9 @@ class _ProfilePageState extends State<ProfilePage>
               style: GoogleFonts.playfairDisplay(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color:
-                    isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                color: isDark
+                    ? AppColors.textPrimaryDark
+                    : AppColors.textPrimaryLight,
               ),
             ),
 
@@ -583,8 +582,10 @@ class _ProfilePageState extends State<ProfilePage>
               maxLines: 3,
               style: Theme.of(context).textTheme.bodyMedium,
               decoration: InputDecoration(
-                hintText:
-                    FlutterI18n.translate(context, 'profile.description_hint'),
+                hintText: FlutterI18n.translate(
+                  context,
+                  'profile.description_hint',
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 ),
@@ -632,9 +633,7 @@ class _ProfilePageState extends State<ProfilePage>
                   _descriptionController.text = _profile!.description ?? '';
                 });
               },
-              child: Text(
-                FlutterI18n.translate(context, 'profile.cancel'),
-              ),
+              child: Text(FlutterI18n.translate(context, 'profile.cancel')),
             ),
           ],
         ],
@@ -650,7 +649,9 @@ class _ProfilePageState extends State<ProfilePage>
           AppIcon(
             name: AppIcon.grid,
             size: 20,
-            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+            color: isDark
+                ? AppColors.textSecondaryDark
+                : AppColors.textSecondaryLight,
           ),
           const SizedBox(width: 8),
           Text(
@@ -667,10 +668,7 @@ class _StatItem extends StatelessWidget {
   final String value;
   final String label;
 
-  const _StatItem({
-    required this.value,
-    required this.label,
-  });
+  const _StatItem({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -684,10 +682,7 @@ class _StatItem extends StatelessWidget {
             color: AppColors.primary,
           ),
         ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }
@@ -725,11 +720,7 @@ class _SettingsTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            AppIcon(
-              name: icon,
-              size: 24,
-              color: color,
-            ),
+            AppIcon(name: icon, size: 24, color: color),
             const SizedBox(width: AppTheme.spacingMd),
             Expanded(
               child: Column(

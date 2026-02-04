@@ -11,17 +11,14 @@ class HomePage extends StatefulWidget {
   final List<int>? pendingUnlikedIds;
   final VoidCallback? onLikesSynced;
 
-  const HomePage({
-    super.key,
-    this.pendingUnlikedIds,
-    this.onLikesSynced,
-  });
+  const HomePage({super.key, this.pendingUnlikedIds, this.onLikesSynced});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   final SupabaseRepository _repository = SupabaseRepository();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
@@ -57,7 +54,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void didUpdateWidget(covariant HomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Sync unliked posts from likes page
-    if (widget.pendingUnlikedIds != null && 
+    if (widget.pendingUnlikedIds != null &&
         widget.pendingUnlikedIds != oldWidget.pendingUnlikedIds) {
       _syncUnlikedPosts(widget.pendingUnlikedIds!);
     }
@@ -160,7 +157,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -168,70 +165,75 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           children: [
             // Custom App Bar
             _buildAppBar(context, isDark),
-            
+
             // Content
             Expanded(
               child: _isLoading && _posts.isEmpty
                   ? const Center(child: AppLoader())
                   : _posts.isEmpty
-                      ? Center(
-                          child: AppEmptyState(
-                            message: FlutterI18n.translate(context, 'home.no_posts'),
-                            subtitle: FlutterI18n.translate(context, 'home.no_posts_subtitle'),
-                          ),
-                        )
-                      : RefreshIndicator(
-                          color: AppColors.primary,
-                          onRefresh: () => _loadData(refresh: true),
-                          child: ListView.builder(
-                            itemCount: _posts.length + (_hasMore ? 1 : 0),
-                            controller: _scrollController,
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(context).padding.bottom + 100,
+                  ? Center(
+                      child: AppEmptyState(
+                        message: FlutterI18n.translate(
+                          context,
+                          'home.no_posts',
+                        ),
+                        subtitle: FlutterI18n.translate(
+                          context,
+                          'home.no_posts_subtitle',
+                        ),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () => _loadData(refresh: true),
+                      child: ListView.builder(
+                        itemCount: _posts.length + (_hasMore ? 1 : 0),
+                        controller: _scrollController,
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).padding.bottom + 100,
+                        ),
+                        itemBuilder: (context, index) {
+                          if (index == _posts.length) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(child: AppLoader(size: 40)),
+                            );
+                          }
+
+                          final post = _posts[index];
+                          final postId = post.id;
+                          final isLiked = _isLiked(postId);
+
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: Duration(
+                              milliseconds: 300 + (index * 50),
                             ),
-                            itemBuilder: (context, index) {
-                              if (index == _posts.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Center(child: AppLoader(size: 40)),
-                                );
-                              }
-
-                              final post = _posts[index];
-                              final postId = post.id;
-                              final isLiked = _isLiked(postId);
-
-                              return TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                duration: Duration(milliseconds: 300 + (index * 50)),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, value, child) {
-                                  return Transform.translate(
-                                    offset: Offset(0, 20 * (1 - value)),
-                                    child: Opacity(
-                                      opacity: value,
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                                child: PostWidget(
-                                  key: ValueKey(postId),
-                                  post: post,
-                                  initialIsLiked: isLiked,
-                                  repository: _repository,
-                                  onDeleted: () {
-                                    setState(() {
-                                      _posts.removeWhere((p) => p.id == postId);
-                                      _likedPosts.removeWhere(
-                                        (like) => like.postId == postId,
-                                      );
-                                    });
-                                  },
-                                ),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 20 * (1 - value)),
+                                child: Opacity(opacity: value, child: child),
                               );
                             },
-                          ),
-                        ),
+                            child: PostWidget(
+                              key: ValueKey(postId),
+                              post: post,
+                              initialIsLiked: isLiked,
+                              repository: _repository,
+                              onDeleted: () {
+                                setState(() {
+                                  _posts.removeWhere((p) => p.id == postId);
+                                  _likedPosts.removeWhere(
+                                    (like) => like.postId == postId,
+                                  );
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
             ),
           ],
         ),
@@ -251,12 +253,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           ScaleTransition(
             scale: _titleAnimation,
             child: Text(
-              'Tseretnip',
+              FlutterI18n.translate(context, 'app_title'),
               style: GoogleFonts.playfairDisplay(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: isDark 
-                    ? AppColors.textPrimaryDark 
+                color: isDark
+                    ? AppColors.textPrimaryDark
                     : AppColors.textPrimaryLight,
               ),
             ),
@@ -277,10 +279,7 @@ class _AnimatedRefreshButton extends StatefulWidget {
   final bool isLoading;
   final VoidCallback onTap;
 
-  const _AnimatedRefreshButton({
-    required this.isLoading,
-    required this.onTap,
-  });
+  const _AnimatedRefreshButton({required this.isLoading, required this.onTap});
 
   @override
   State<_AnimatedRefreshButton> createState() => _AnimatedRefreshButtonState();
@@ -325,9 +324,7 @@ class _AnimatedRefreshButtonState extends State<_AnimatedRefreshButton>
         child: AppIcon(
           name: AppIcon.reload,
           size: 24,
-          color: widget.isLoading 
-              ? AppColors.textTertiaryLight 
-              : null,
+          color: widget.isLoading ? AppColors.textTertiaryLight : null,
         ),
       ),
     );

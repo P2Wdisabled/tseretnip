@@ -10,10 +10,7 @@ import 'package:tseretnip/widgets/widgets.dart';
 class LikesPage extends StatefulWidget {
   final Function(List<int>)? onUnlikedIdsChanged;
 
-  const LikesPage({
-    super.key,
-    this.onUnlikedIdsChanged,
-  });
+  const LikesPage({super.key, this.onUnlikedIdsChanged});
 
   @override
   State<LikesPage> createState() => _LikesPageState();
@@ -63,7 +60,11 @@ class _LikesPageState extends State<LikesPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading likes: $e')),
+          SnackBar(
+            content: Text(
+              '${FlutterI18n.translate(context, 'likes.error_loading')}$e',
+            ),
+          ),
         );
       }
     } finally {
@@ -99,58 +100,54 @@ class _LikesPageState extends State<LikesPage>
               child: _isLoading
                   ? const Center(child: AppLoader())
                   : _likedPosts.isEmpty
-                      ? Center(
-                          child: AppEmptyState(
-                            message: FlutterI18n.translate(
-                              context,
-                              'likes.no_likes',
-                            ),
-                            subtitle: FlutterI18n.translate(
-                              context,
-                              'likes.no_likes_subtitle',
-                            ),
-                          ),
-                        )
-                      : RefreshIndicator(
-                          color: AppColors.primary,
-                          onRefresh: _loadLikedPosts,
-                          child: ListView.builder(
-                            padding: EdgeInsets.only(
-                              bottom:
-                                  MediaQuery.of(context).padding.bottom + 100,
-                            ),
-                            itemCount: _likedPosts.length,
-                            itemBuilder: (context, index) {
-                              final post = _likedPosts[index];
-                              final postId = post.id;
+                  ? Center(
+                      child: AppEmptyState(
+                        message: FlutterI18n.translate(
+                          context,
+                          'likes.no_likes',
+                        ),
+                        subtitle: FlutterI18n.translate(
+                          context,
+                          'likes.no_likes_subtitle',
+                        ),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: _loadLikedPosts,
+                      child: ListView.builder(
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).padding.bottom + 100,
+                        ),
+                        itemCount: _likedPosts.length,
+                        itemBuilder: (context, index) {
+                          final post = _likedPosts[index];
+                          final postId = post.id;
 
-                              return TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                duration: Duration(
-                                  milliseconds: 300 + (index * 50),
-                                ),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, value, child) {
-                                  return Transform.translate(
-                                    offset: Offset(0, 20 * (1 - value)),
-                                    child: Opacity(
-                                      opacity: value,
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                                child: PostWidget(
-                                  key: ValueKey(postId),
-                                  post: post,
-                                  initialIsLiked: true,
-                                  repository: _repository,
-                                  onLikeChanged: (isLiked) =>
-                                      _onLikeChanged(postId, isLiked),
-                                ),
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: Duration(
+                              milliseconds: 300 + (index * 50),
+                            ),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 20 * (1 - value)),
+                                child: Opacity(opacity: value, child: child),
                               );
                             },
-                          ),
-                        ),
+                            child: PostWidget(
+                              key: ValueKey(postId),
+                              post: post,
+                              initialIsLiked: true,
+                              repository: _repository,
+                              onLikeChanged: (isLiked) =>
+                                  _onLikeChanged(postId, isLiked),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
             ),
           ],
         ),

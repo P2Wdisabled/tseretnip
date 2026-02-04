@@ -12,6 +12,8 @@ import 'package:tseretnip/pages/likes_page.dart';
 import 'package:tseretnip/pages/profile.dart';
 import 'package:tseretnip/widgets/widgets.dart';
 
+import 'package:tseretnip/services/language_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -23,8 +25,31 @@ void main() async {
   runApp(const MainApp());
 }
 
-class MainApp extends StatelessWidget {
+class MainApp extends StatefulWidget {
   const MainApp({super.key});
+
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  final LanguageService _languageService = LanguageService();
+
+  @override
+  void initState() {
+    super.initState();
+    _languageService.addListener(_onLanguageChanged);
+  }
+
+  @override
+  void dispose() {
+    _languageService.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +73,7 @@ class MainApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: const [Locale('en'), Locale('fr')],
+        locale: _languageService.currentLocale,
         theme: theme,
         darkTheme: darkTheme,
         home: const AuthGate(),
