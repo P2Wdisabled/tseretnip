@@ -47,4 +47,5 @@ flutter run --dart-define-from-file=config.json
 - [Benchmark — ChatGPT (image générée pour la page ajout de photos à partir du template Dribbble)](benchmark/ChatGPT.png)
 
 ## 📝 Difficultés rencontrées
-[2-3 défis techniques que vous avez surmontés]
+La connexion à la base de données et l’implémentation de l’authentification ont été des points complexes du projet, en particulier la gestion des providers d’authentification et de l’état de connexion de l’utilisateur dans Flutter.
+L’ajout des photos a également représenté une difficulté, en particulier le passage d’un stockage en Base64 à l’utilisation des buckets de stockage Supabase, plus adaptés à la gestion de fichiers.
