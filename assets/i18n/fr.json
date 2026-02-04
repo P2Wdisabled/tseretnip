@@ -39,10 +39,13 @@
         "success_message": "{count} photo(s) envoyée(s).",
         "failure_message": "Échec de l'envoi : ",
         "no_photos": "Aucune photo sélectionnée.",
-        "select_photos_subtitle": "Choisissez des photos à envoyer.",
-        "take_photos_subtitle": "Prenez des photos.",
-        "validate_button": "Valider la publication."
-
+        "select_photos_title": "Choisissez des photos à envoyer.",
+        "take_photo_title": "Prenez des photos.",
+        "validate_button": "Valider la publication.",
+        "select_photos_subtitle": "Depuis la galerie",
+        "take_photo_subtitle": "Depuis la caméra",
+        "selected_photos": "Photos sélectionnées",
+        "upload_complete": "Upload terminé !"
     },
     "profile": {
         "title": "Profil",
@@ -62,6 +65,8 @@
         "error_update": "Erreur lors de la mise à jour : ",
         "error_upload": "Erreur lors de l'upload : ",
         "language": "Langue",
+        "en_label": "Anglais",
+        "fr_label": "Français",
         "my_posts": "Mes Posts",
         "theme": "Thème",
         "dark_mode": "Mode Sombre",
@@ -72,6 +77,7 @@
     "likes": {
         "title": "Mes Likes",
         "no_likes": "Aucun post liké pour le moment.",
-        "no_likes_subtitle": "Les posts que vous aimez apparaîtront ici."
+        "no_likes_subtitle": "Les posts que vous aimez apparaîtront ici.",
+        "error_loading": "Erreur lors du chargement des likes : "
     }
 }

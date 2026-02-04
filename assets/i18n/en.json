@@ -39,9 +39,13 @@
         "success_message": "Uploaded {count} photo(s).",
         "failure_message": "Upload failed: ",
         "no_photos": "No photos selected.",
-        "select_photos_subtitle": "Choose photos to upload.",
-        "take_photos_subtitle": "Take photos.",
-        "validate_button": "Validate Post."
+        "select_photos_title": "Choose photos to upload.",
+        "take_photo_title": "Take photos.",
+        "validate_button": "Validate Post.",
+        "select_photos_subtitle": "From gallery",
+        "take_photo_subtitle": "From camera",
+        "selected_photos": "Selected photos",
+        "upload_complete": "Upload complete!"
     },
     "profile": {
         "title": "Profile",
@@ -61,6 +65,8 @@
         "error_update": "Error updating: ",
         "error_upload": "Error uploading: ",
         "language": "Language",
+        "en_label": "English",
+        "fr_label": "Français",
         "my_posts": "My Posts",
         "theme": "Theme",
         "dark_mode": "Dark Mode",
@@ -71,6 +77,7 @@
     "likes": {
         "title": "My Likes",
         "no_likes": "No posts liked yet.",
-        "no_likes_subtitle": "Posts you like will appear here."
+        "no_likes_subtitle": "Posts you like will appear here.",
+        "error_loading": "Error loading likes: "
     }
 }
